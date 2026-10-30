@@ -1,0 +1,1460 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gestión veterinaria</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: sidebar de app en PC, barra inferior en celular; agenda del día como vista principal */
+:root{
+  --bg:#f5f6f2; --surface:#ffffff; --surface-2:#eef1ea; --line:#dde2d6;
+  --fg:#1d2420; --muted:#5f6b63; --accent:#1f6b4f; --accent-fg:#ffffff; --accent-soft:#dcefe5;
+  --ok:#1f7a4a; --ok-bg:#dff3e7; --warn:#8a5a00; --warn-bg:#fbefd2; --bad:#a3352b; --bad-bg:#f8e0dc; --info:#285c8f; --info-bg:#e0ebf7;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --radius:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121614; --surface:#1a201d; --surface-2:#222a26; --line:#2f3833;
+  --fg:#e7ece8; --muted:#9aa69f; --accent:#5cc196; --accent-fg:#0d1a14; --accent-soft:#1f3a2e;
+  --ok:#74d39f; --ok-bg:#1c3527; --warn:#e9bd62; --warn-bg:#3a2f17; --bad:#f08f84; --bad-bg:#3d2220; --info:#8dbbe8; --info-bg:#1d2c3d;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1a201d; --surface-2:#222a26; --line:#2f3833;
+  --fg:#e7ece8; --muted:#9aa69f; --accent:#5cc196; --accent-fg:#0d1a14; --accent-soft:#1f3a2e;
+  --ok:#74d39f; --ok-bg:#1c3527; --warn:#e9bd62; --warn-bg:#3a2f17; --bad:#f08f84; --bad-bg:#3d2220; --info:#8dbbe8; --info-bg:#1d2c3d;
+  color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100%}
+.side{background:var(--surface);border-right:1px solid var(--line);padding:20px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.brand{font-family:var(--display);font-size:22px;font-weight:700;padding:0 10px 4px;color:var(--accent)}
+.brand small{display:block;font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted)}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:14px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--fg);text-decoration:none;font-weight:500}
+.nav a svg{width:18px;height:18px;flex:none}
+.nav a:hover{background:var(--surface-2)}
+.nav a.on{background:var(--accent-soft);color:var(--accent)}
+.side .foot{margin-top:auto;font-size:12px;color:var(--muted);padding:0 10px;display:flex;flex-direction:column;gap:8px}
+.main{min-width:0;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.banner{background:var(--warn-bg);color:var(--warn);border-radius:var(--radius);padding:8px 12px;font-size:13px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-size:28px;font-weight:700;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-size:18px;font-weight:600;margin:0}
+.sub{color:var(--muted);margin:2px 0 0}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn.link{border:none;background:none;padding:0;color:var(--accent);font-weight:600}
+.week{display:grid;grid-template-columns:auto repeat(7,1fr) auto;gap:6px;align-items:stretch}
+.week .arrow{border:1px solid var(--line);background:var(--surface);border-radius:8px;cursor:pointer;padding:0 8px}
+.day{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 4px;text-align:center;cursor:pointer;min-width:0}
+.day .dn{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.day .dd{font-family:var(--display);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.day .dc{font-size:11px;color:var(--muted)}
+.day.today .dd{color:var(--accent)}
+.day.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.day.on .dn,.day.on .dc,.day.on .dd{color:var(--accent-fg)}
+.summary{display:flex;gap:8px;flex-wrap:wrap;font-size:13px}
+.list{display:flex;flex-direction:column;gap:8px}
+.appt{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
+.appt.done{opacity:.7}
+.appt .time{font-family:var(--display);font-weight:600;font-size:18px;font-variant-numeric:tabular-nums;line-height:1.2}
+.appt .time small{display:block;font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted)}
+.appt .who{min-width:0}
+.appt .pet{font-weight:600}
+.appt .meta{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.appt .act{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.appt select{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 6px;font-size:13px}
+.chip{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.s-pendiente{background:var(--surface-2);color:var(--muted)}
+.s-confirmado{background:var(--info-bg);color:var(--info)}
+.s-atendido{background:var(--ok-bg);color:var(--ok)}
+.s-ausente{background:var(--warn-bg);color:var(--warn)}
+.s-cancelado{background:var(--bad-bg);color:var(--bad)}
+.tag{display:inline-block;border-radius:6px;padding:1px 7px;font-size:12px;background:var(--surface-2);color:var(--muted);font-weight:500}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);padding:28px;text-align:center;color:var(--muted)}
+.search{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px}
+.rows{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line);cursor:pointer;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left}
+.row:first-child{border-top:0}
+.row:hover{background:var(--surface-2)}
+.av{width:38px;height:38px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;flex:none;font-size:14px}
+.row .grow{flex:1;min-width:0}
+.row .t{font-weight:600}
+.row .d{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px 20px;margin:0}
+.kv div{min-width:0}
+.kv dt{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.kv dd{margin:2px 0 0;overflow-wrap:anywhere}
+.back{align-self:flex-start}
+.note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 10px;font-size:13px}
+.overlay{position:fixed;inset:0;background:rgba(10,15,12,.45);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:var(--surface);border-radius:14px;width:min(520px,100%);max-height:calc(100% - 20px);overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form .full{grid-column:1/-1}
+.form>*{min-width:0}
+.modal{overflow-x:hidden}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:13px;font-weight:600}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 10px;width:100%}
+.field textarea{min-height:70px;resize:vertical}
+.check{display:flex;align-items:center;gap:8px;font-size:14px}
+.err{color:var(--bad);font-size:13px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface-2);border-radius:9px;padding:4px}
+.seg label{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px;border-radius:7px;cursor:pointer;font-weight:600;font-size:14px}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent)}
+.form.sub{padding:0}
+.hint{margin:0;color:var(--muted);font-size:13px}
+.s-nuevo{background:var(--accent-soft);color:var(--accent)}
+.tabsbar{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabsbar button{border:0;background:none;padding:10px 12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabsbar button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.money{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;font-variant-numeric:tabular-nums}
+.caja{display:flex;gap:24px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px}
+.caja>div{display:flex;flex-direction:column}
+.price{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pgroup{display:flex;flex-direction:column;gap:8px}
+.addrow{display:flex;gap:8px;flex-wrap:wrap}
+.addrow select,.addrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 10px}
+.extra summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px;margin-bottom:8px}
+.mini{width:56px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 6px;font-variant-numeric:tabular-nums}
+.mini.wide{width:90px}
+.cobro td.wrap{white-space:normal;min-width:120px}
+.metodos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 10px}
+.metodos label{display:flex;align-items:center;justify-content:center;text-align:center;border:1px solid var(--line);border-radius:8px;padding:9px 6px;cursor:pointer;font-weight:600;font-size:14px;background:var(--surface)}
+.metodos input{position:absolute;opacity:0;pointer-events:none}
+.metodos label:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.metodos label:has(input:focus-visible){outline:2px solid var(--accent)}
+.pagobox{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
+.pagobox .hint{margin:4px 0 0}
+.linkbox{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface-2);border-radius:8px;padding:8px 10px}
+.linkbox code{font-size:13px;overflow-wrap:anywhere;flex:1;min-width:0}
+.qrwrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.qrwrap [data-qr]{background:#fff;padding:8px;border-radius:8px;line-height:0}
+.qrph{width:150px;height:150px;display:grid;place-items:center;color:#1d2420;font-weight:700;border:2px dashed #999}
+.note.ok{background:var(--ok-bg);color:var(--ok)}
+.vact{display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:8px}
+.flabel{font-size:13px;font-weight:600}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 12px}
+[data-meds]{display:flex;flex-direction:column;gap:8px}
+.medrow{display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:6px;align-items:center;background:var(--surface-2);padding:8px;border-radius:8px}
+.medrow input,.medrow select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:7px 8px;min-width:0;width:100%}
+.medrow:has(select){grid-template-columns:1fr 1fr 1fr}
+.medrow:has(select) [data-f=nombre],.medrow:has(select) [data-f=nota]{grid-column:span 2}
+.medrow .btn.link{justify-self:end}
+@media (max-width:760px){.medrow,.medrow:has(select){grid-template-columns:1fr 1fr}.medrow [data-f=nombre],.medrow [data-f=nota]{grid-column:1/-1}}
+.sendopts{display:flex;flex-direction:column;gap:6px;background:var(--accent-soft);border-radius:8px;padding:10px 12px}
+.sendopts .check{align-items:flex-start}
+.chipbtn{border:0;cursor:pointer}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgba(0,0,0,.25)}
+@media (max-width:760px){.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
+.btn.big{justify-content:center;padding:12px;font-size:16px}
+.fallback{display:flex;flex-direction:column;gap:8px}
+.fallback .note{margin:0}
+.steps{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.wa-chat{background:#e5ddd5;border-radius:10px;padding:14px;display:flex}
+.wa-bubble{background:#dcf8c6;color:#111b21;border-radius:8px;padding:6px;max-width:92%;margin-left:auto;box-shadow:0 1px 1px rgba(0,0,0,.15);display:flex;flex-direction:column;gap:6px}
+.wa-file{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.06);border-radius:6px;padding:8px;font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.wa-pdf{background:#d93025;color:#fff;font-size:10px;font-weight:700;padding:3px 5px;border-radius:3px}
+.wa-text{white-space:pre-wrap;font-size:14px;padding:0 4px}
+.wa-meta{align-self:flex-end;font-size:11px;color:#667781;padding:0 4px}
+.totline{display:flex;justify-content:space-between;align-items:baseline;padding:10px 4px 0;font-weight:600}
+.totline .tot{font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+@media (max-width:760px){.cobro th,.cobro td{padding:6px 6px}.mini{width:44px}.mini.wide{width:72px}}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.vrow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--line);flex-wrap:wrap}
+.vrow:first-child{border-top:0}
+.vrow .grow{flex:1;min-width:180px}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.vtab{width:100%;border-collapse:collapse;font-size:14px}
+.vtab th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding:8px 12px;border-bottom:1px solid var(--line)}
+.vtab td{padding:8px 12px;border-top:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+.vtab tr:first-child td{border-top:0}
+.tabact{display:flex;gap:8px;flex-wrap:wrap}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+a.btn{text-decoration:none;color:var(--fg)}
+a.btn.primary{color:var(--accent-fg)}
+.fallback [data-marcar]{align-self:flex-start}
+.visit{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.visit p{margin:0;overflow-wrap:anywhere}
+.vhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vdate{font-family:var(--display);font-weight:600;font-size:17px;font-variant-numeric:tabular-nums}
+.vitals{display:flex;gap:24px;flex-wrap:wrap;background:var(--surface-2);border-radius:8px;padding:8px 12px}
+.vitals>div{display:flex;flex-direction:column}
+.vl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.vv{font-weight:600;font-size:16px;font-variant-numeric:tabular-nums}
+.vv small{font-size:12px;font-weight:600}
+.vv .up{color:var(--warn)} .vv .down{color:var(--info)}
+.files{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.filecard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.filecard .t{font-weight:600}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.thumb{aspect-ratio:1;max-width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);padding:0;overflow:hidden;cursor:pointer;display:grid;place-items:center}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb.ph{grid-column:1/-1;aspect-ratio:auto;padding:18px 8px;cursor:default;color:var(--muted);font-size:12px;text-align:center}
+.fic{font-weight:700;color:var(--muted);font-size:12px;text-align:center;padding:4px}
+.viewer img{display:block;max-width:100%;max-height:60vh;margin:0 auto;border-radius:8px}
+.field textarea[readonly]{font-size:13px;min-height:180px}
+.mact{display:flex;justify-content:flex-end;gap:8px}
+.fab{display:none}
+.tabs{display:none}
+.cuentabar{display:none}
+@media (max-width:760px){.cuentabar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .main{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  h1{font-size:24px}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:20;padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+  .tabs a{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--muted);text-decoration:none;padding:4px;font-weight:500}
+  .tabs a svg{width:22px;height:22px}
+  .tabs a.on{color:var(--accent)}
+  .fab{display:flex;position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:21;border-radius:999px;padding:12px 18px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+  .head .btn.primary{display:none}
+  .week{grid-template-columns:repeat(7,1fr)}
+  .week .arrow{display:none}
+  .appt{grid-template-columns:52px 1fr}
+  .appt .act{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center}
+  .overlay{place-items:end center;padding:0}
+  .modal{border-radius:14px 14px 0 0;max-height:92%;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+  .form{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:no-preference){.btn,.day,.row{transition:background-color .15s}}
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span id="brand-nombre">Veterinaria</span><small>Gestión veterinaria</small></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot">
+      <span id="quien"></span>
+      <button class="btn small" id="cuenta">Mi cuenta</button>
+    </div>
+  </aside>
+  <main class="main"><div class="wrap" id="view"></div></main>
+</div>
+<nav class="tabs" id="tabs"></nav>
+<button class="btn primary fab" id="fab">+ Turno</button>
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="overlay" id="overlay" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const ICONS={
+  agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  clientes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11a3 3 0 1 0 0-6M22 20c0-3-2-5-5-5"/></svg>',
+  mascotas:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="10" r="2.2"/><circle cx="9.5" cy="5.5" r="2.2"/><circle cx="14.5" cy="5.5" r="2.2"/><circle cx="19" cy="10" r="2.2"/><path d="M12 11c-3 0-6.5 4.5-6.5 7.2C5.5 20 7 21 8.6 21c1.5 0 2.2-.8 3.4-.8s1.9.8 3.4.8c1.6 0 3.1-1 3.1-2.8C18.5 15.5 15 11 12 11z"/></svg>',
+  precios:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>'
+};
+const SECTIONS=[['agenda','Agenda'],['clientes','Clientes'],['mascotas','Mascotas'],['precios','Precios']];
+const ESTADOS=['pendiente','confirmado','atendido','ausente','cancelado'];
+const MOTIVOS=['Consulta','Vacunación','Control','Desparasitación','Cirugía','Peluquería','Baño'];
+let PROFS=[];
+const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fromIso=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=fromIso(s);d.setDate(d.getDate()+n);return iso(d)};
+const TODAY=iso(new Date());
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const toMin=h=>{const [a,b]=h.split(':').map(Number);return a*60+b};
+const fmtDate=s=>{const d=fromIso(s);return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`};
+function edad(nac){
+  if(!nac) return '';
+  const n=fromIso(nac),h=new Date();
+  let m=(h.getFullYear()-n.getFullYear())*12+h.getMonth()-n.getMonth();
+  if(h.getDate()<n.getDate()) m--;
+  if(m<12) return `${Math.max(m,0)} ${m===1?'mes':'meses'}`;
+  const a=Math.floor(m/12);return `${a} ${a===1?'año':'años'}`;
+}
+const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const initials=(a,b)=>((a||'')[0]||'')+((b||'')[0]||'');
+
+function sampleData(){
+  const yearsAgo=(y,m=0)=>{const d=new Date();d.setFullYear(d.getFullYear()-y);d.setMonth(d.getMonth()-m);return iso(d)};
+  const clientes=[
+    {id:'c1',nombre:'Lucía',apellido:'Fernández',telefono:'11 5423-8891',dni:'32.118.402',email:'lucia.fz@mail.com',direccion:'Av. San Martín 1420',notas:''},
+    {id:'c2',nombre:'Jorge',apellido:'Benítez',telefono:'11 4987-2210',dni:'25.660.193',email:'',direccion:'Belgrano 311',notas:'Prefiere WhatsApp'},
+    {id:'c3',nombre:'Carla',apellido:'Moreno',telefono:'11 6012-7745',dni:'38.402.551',email:'carlam@mail.com',direccion:'Mitre 88, 2º B',notas:''},
+    {id:'c4',nombre:'Ramiro',apellido:'Acosta',telefono:'11 3321-0098',dni:'29.774.016',email:'',direccion:'Rivadavia 2050',notas:'Paga con transferencia'},
+    {id:'c5',nombre:'Sofía',apellido:'Giménez',telefono:'11 5590-3312',dni:'41.230.877',email:'sofi.g@mail.com',direccion:'Sarmiento 765',notas:''},
+    {id:'c6',nombre:'Héctor',apellido:'Paz',telefono:'11 4410-6623',dni:'18.905.334',email:'',direccion:'Lavalle 1290',notas:''}
+  ];
+  const mascotas=[
+    {id:'m1',cliente:'c1',nombre:'Toby',especie:'Perro',raza:'Caniche',sexo:'Macho',nacimiento:yearsAgo(6,2),peso:'7.2',castrado:true,notas:'Alérgico a la penicilina'},
+    {id:'m2',cliente:'c1',nombre:'Mora',especie:'Gato',raza:'Común europeo',sexo:'Hembra',nacimiento:yearsAgo(2,5),peso:'3.9',castrado:true,notas:''},
+    {id:'m3',cliente:'c2',nombre:'Rocco',especie:'Perro',raza:'Ovejero alemán',sexo:'Macho',nacimiento:yearsAgo(9),peso:'34',castrado:false,notas:'Displasia de cadera, control cada 3 meses'},
+    {id:'m4',cliente:'c3',nombre:'Luna',especie:'Perro',raza:'Mestiza',sexo:'Hembra',nacimiento:yearsAgo(0,5),peso:'6.1',castrado:false,notas:'Plan de vacunas en curso'},
+    {id:'m5',cliente:'c3',nombre:'Simba',especie:'Gato',raza:'Siamés',sexo:'Macho',nacimiento:yearsAgo(4),peso:'4.8',castrado:true,notas:''},
+    {id:'m6',cliente:'c4',nombre:'Kira',especie:'Perro',raza:'Golden retriever',sexo:'Hembra',nacimiento:yearsAgo(3,1),peso:'28.5',castrado:true,notas:''},
+    {id:'m7',cliente:'c5',nombre:'Pancho',especie:'Otro',raza:'Conejo',sexo:'Macho',nacimiento:yearsAgo(1,8),peso:'1.6',castrado:false,notas:''},
+    {id:'m8',cliente:'c6',nombre:'Negra',especie:'Perro',raza:'Labrador',sexo:'Hembra',nacimiento:yearsAgo(11),peso:'30',castrado:true,notas:'Cardiopatía, medicada'},
+    {id:'m9',cliente:'c5',nombre:'Milo',especie:'Gato',raza:'Común europeo',sexo:'Macho',nacimiento:yearsAgo(0,9),peso:'3.1',castrado:false,notas:''}
+  ];
+  const t=(dia,hora,dur,mascota,motivo,prof,estado,notas='')=>({id:uid(),fecha:addDays(TODAY,dia),hora,dur,mascota,motivo,prof,estado,notas});
+  const turnos=[
+    t(-3,'10:00',30,'m3','Control','Dr. Martín Sosa','atendido','Mejor movilidad'),
+    t(-2,'11:30',30,'m4','Vacunación','Dra. Paula Ríos','atendido','Séxtuple, 2ª dosis'),
+    t(-1,'17:00',30,'m7','Consulta','Dra. Paula Ríos','ausente'),
+    t(0,'09:30',30,'m1','Vacunación','Dra. Paula Ríos','atendido','Antirrábica anual'),
+    t(0,'10:30',45,'m3','Control','Dr. Martín Sosa','confirmado'),
+    t(0,'11:30',30,'m5','Consulta','Dra. Paula Ríos','confirmado','Vómitos hace 2 días'),
+    t(0,'16:00',60,'m6','Peluquería','Dr. Martín Sosa','pendiente'),
+    t(0,'17:30',30,'m9','Desparasitación','Dra. Paula Ríos','pendiente'),
+    t(1,'09:00',90,'m8','Cirugía','Dr. Martín Sosa','confirmado','Extracción dental, ayuno 12 h'),
+    t(1,'15:00',30,'m2','Control','Dra. Paula Ríos','pendiente'),
+    t(2,'10:00',30,'m4','Vacunación','Dra. Paula Ríos','pendiente','Séxtuple, 3ª dosis'),
+    t(3,'18:00',30,'m7','Consulta','Dra. Paula Ríos','cancelado'),
+    t(4,'11:00',60,'m1','Baño','Dr. Martín Sosa','pendiente')
+  ];
+  return {clientes,mascotas,turnos,...sampleClinica(),vacunas:sampleVacunas(turnos),precios:samplePrecios()};
+}
+function sampleClinica(){
+  const v=(dia,mascota,motivo,prof,temp,peso,obs,trat)=>({id:uid(),fecha:addDays(TODAY,dia),mascota,motivo,prof,temp,peso,obs,trat});
+  const visitas=[
+    v(-365,'m1','Vacunación','Dra. Paula Ríos','38.5','7.0','Antirrábica anual. Sarro dental moderado.','Evaluar limpieza dental.'),
+    v(-200,'m5','Consulta','Dra. Paula Ríos','39.6','4.6','Decaído, no come hace 24 h. Abdomen sensible a la palpación.','Suero subcutáneo y dieta blanda por 3 días.'),
+    v(-180,'m3','Control','Dr. Martín Sosa','38.6','35.2','Dolor leve al manipular la cadera izquierda. Claudicación leve.','Meloxicam 0,1 mg/kg cada 24 h por 10 días. Control en 3 meses.'),
+    v(-90,'m3','Control','Dr. Martín Sosa','38.4','34.5','Mejoró la marcha. Se pide radiografía de control.','Condroprotector diario.'),
+    v(-60,'m8','Consulta','Dr. Martín Sosa','38.9','30.4','Tos nocturna y cansancio al caminar. Soplo grado III/VI.','Pimobendan 0,25 mg/kg cada 12 h. Pedir ecocardiograma.'),
+    v(-45,'m8','Control','Dr. Martín Sosa','38.5','30.0','Menos tos. El ecocardiograma confirma enfermedad valvular mitral.','Seguir con la medicación. Control mensual.'),
+    v(-30,'m4','Vacunación','Dra. Paula Ríos','38.7','4.9','Cachorra activa, buen estado general. Primera dosis de séxtuple.','Próxima dosis en 21 días.')
+  ];
+  const e=(dia,mascota,tipo,titulo,nota)=>({id:uid(),fecha:addDays(TODAY,dia),mascota,tipo,titulo,nota,archivos:[]});
+  const estudios=[
+    e(-88,'m3','Radiografía','Cadera, vista ventrodorsal','Displasia moderada bilateral.'),
+    e(-58,'m8','Análisis de sangre','Hemograma y perfil bioquímico','Urea levemente aumentada.'),
+    e(-50,'m8','Ecografía','Ecocardiograma','Enfermedad valvular mitral, estadio B2.')
+  ];
+  return {visitas,estudios};
+}
+
+// Datos en el servidor (PostgreSQL). Se traen todos los de la veterinaria
+// y se mandan solo los registros que cambiaron.
+const COLS=['clientes','mascotas','turnos','visitas','vacunas','estudios','documentos','precios','mensajes'];
+const ROLES={admin:'Administración',veterinario:'Veterinario/a',recepcion:'Recepción'};
+let db=Object.fromEntries(COLS.map(c=>[c,[]])),sesion=null,base={},ultimo='',pushTimer=null,enviando=null;
+async function api(url,opt={}){
+  const r=await fetch(url,{cache:'no-store',credentials:'same-origin',...opt,headers:{'X-Vet':'1',...(opt.headers||{})}});
+  if(r.status===401||r.status===409){location.href='login.html';throw new Error('sin sesión')}
+  return r;
+}
+const porId=c=>new Map((db[c]||[]).map(r=>[r.id,JSON.stringify(r)]));
+const instantanea=()=>Object.fromEntries(COLS.map(c=>[c,porId(c)]));
+function cambiosPendientes(){
+  const guardar={},borrar={};let hay=false;
+  for(const c of COLS){
+    const ahora=porId(c),antes=base[c]||new Map();
+    const g=[...ahora].filter(([id,j])=>antes.get(id)!==j).map(([,j])=>JSON.parse(j));
+    const b=[...antes.keys()].filter(id=>!ahora.has(id));
+    if(g.length){guardar[c]=g;hay=true}
+    if(b.length){borrar[c]=b;hay=true}
+  }
+  return hay?{guardar,borrar}:null;
+}
+function save(){clearTimeout(pushTimer);pushTimer=setTimeout(push,300)}
+async function push(){
+  pushTimer=null;
+  if(enviando){save();return}
+  const p=cambiosPendientes();if(!p) return;
+  const snap=instantanea();
+  enviando=(async()=>{
+    try{
+      const r=await api('api/cambios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+      if(r.ok) base=snap;
+      else if(r.status===403){toast((await r.json().catch(()=>({}))).detail||'Tu usuario no tiene permiso para eso');enviando=null;await pull(true);render()}
+      else{toast('No se pudo guardar en el servidor, reintentando…');setTimeout(save,5000)}
+    }catch(e){if(e.message!=='sin sesión'){toast('Sin conexión con el servidor, reintentando…');setTimeout(save,5000)}}
+    finally{enviando=null}
+  })();
+}
+const ocupado=()=>pushTimer||enviando||cambiosPendientes();
+async function pull(forzar){
+  if(!forzar&&ocupado()) return false;
+  const r=await api('api/datos');if(!r.ok) return false;
+  const txt=await r.text();
+  if(!forzar&&(txt===ultimo||ocupado())) return false;
+  const d=JSON.parse(txt);
+  for(const c of COLS) if(!Array.isArray(d[c])) d[c]=[];
+  db=d;ultimo=txt;seedCobros();base=instantanea();
+  return true;
+}
+async function refresh(){
+  if(!document.getElementById('overlay').hidden||state.q) return;
+  try{if(await pull()) render()}catch(e){}
+}
+addEventListener('pagehide',()=>{
+  const p=cambiosPendientes();
+  if(p) fetch('api/cambios',{method:'POST',keepalive:true,credentials:'same-origin',headers:{'X-Vet':'1','Content-Type':'application/json'},body:JSON.stringify(p)});
+});
+async function iniciar(){
+  let r;
+  try{r=await api('api/sesion')}catch(e){if(e.message!=='sin sesión') toast('No se pudo conectar con el servidor');return false}
+  if(!r.ok){toast('No se pudo conectar con el servidor');return false}
+  sesion=await r.json();
+  const v=sesion.veterinaria;
+  if(!v){location.href='login.html';return false}
+  CLINICA={nombre:v.nombre,dir:v.direccion,tel:v.telefono};ALIAS=v.alias_pago||'';
+  PROFS=sesion.profesionales.length?sesion.profesionales:[sesion.usuario.nombre];
+  document.title=v.nombre+' · Gestión veterinaria';
+  document.getElementById('brand-nombre').textContent=v.nombre;
+  document.getElementById('quien').textContent=sesion.usuario.nombre+' · '+ROLES[sesion.rol];
+  document.body.dataset.rol=sesion.rol;
+  return await pull(true);
+}
+
+const state={section:'agenda',day:TODAY,detail:null,q:'',tab:'historia'};
+const cliente=id=>db.clientes.find(c=>c.id===id);
+const mascota=id=>db.mascotas.find(m=>m.id===id);
+const fullName=c=>c?`${c.nombre} ${c.apellido}`:'';
+
+function renderNav(){
+  const h=SECTIONS.map(([k,l])=>`<a href="#${k}" class="${state.section===k?'on':''}">${ICONS[k]}<span>${l}</span></a>`).join('');
+  document.getElementById('nav').innerHTML=h;
+  document.getElementById('tabs').innerHTML=h;
+}
+
+function render(){
+  renderNav();
+  const v=document.getElementById('view');
+  const d=state.detail;
+  v.innerHTML=`<div class="cuentabar"><b>${esc(CLINICA.nombre)}</b><button class="btn small" data-cuenta>Mi cuenta</button></div>`+
+    (d?.type==='cliente'?viewCliente(d.id):d?.type==='mascota'?viewMascota(d.id):
+     state.section==='clientes'?viewClientes():state.section==='precios'?viewPrecios():state.section==='mascotas'?viewMascotas():viewAgenda());
+  hydrateThumbs(v);
+  const s=document.getElementById('q');
+  if(s){s.focus();s.setSelectionRange(s.value.length,s.value.length)}
+}
+
+function apptCard(t,showDate){
+  const m=mascota(t.mascota),c=m&&cliente(m.cliente);
+  const fin=toMin(t.hora)+Number(t.dur);
+  return `<div class="appt ${t.estado==='atendido'||t.estado==='cancelado'?'done':''}">
+    <div class="time">${esc(t.hora)}<small>${t.dur} min</small></div>
+    <div class="who">
+      <div><button class="btn link pet" data-open-m="${m?.id}">${esc(m?.nombre)}</button> <span class="tag">${esc(m?.especie)}</span> <span class="tag">${esc(t.motivo)}</span>${t.primeraVez?' <span class="chip s-nuevo">Primera vez</span>':''}${t.espontaneo?' <span class="chip s-ausente">Sin turno</span>':''}${t.recordado&&recordable(t)?' <span class="chip s-confirmado">Recordado</span>':''}${(db.mensajes||[]).some(x=>x.turnoId===t.id&&x.enviado)?' <span class="chip s-atendido">WhatsApp enviado</span>':''}</div>
+      <div class="meta">${showDate?esc(fmtDate(t.fecha))+' · ':''}${esc(fullName(c))} · ${esc(c?.telefono)}</div>
+      <div class="meta">${t.atendidoPor&&t.atendidoPor!==t.prof?`Turno con ${esc(t.prof)} · <b>Atendió ${esc(t.atendidoPor)}</b>`:esc(t.atendidoPor||t.prof)} · hasta ${pad(Math.floor(fin/60))}:${pad(fin%60)}${t.notas?' · '+esc(t.notas):''}</div>
+      ${t.estado!=='cancelado'?`<div class="money"><b>${money(totalDe(t))}</b> ${t.pago==='cobrado'?`<span class="chip s-atendido">Cobrado · ${esc(t.medio)}</span>`:t.pago==='esperando'?'<span class="chip s-confirmado">Link enviado</span>':(t.items||[]).length?'<span class="chip s-pendiente">A cobrar</span>':'<span class="meta">Sin ítems cargados</span>'} <button class="btn link" data-cobro="${t.id}">${(t.items||[]).length?'Ver detalle':'Cargar cobro'}</button></div>`:''}
+    </div>
+    <div class="act">
+      <span class="chip s-${t.estado}">${t.estado[0].toUpperCase()+t.estado.slice(1)}</span>
+      ${t.estado==='atendido'?((db.visitas||[]).some(v=>v.turno===t.id)?`<button class="btn small" data-open-m="${m?.id}" data-tab-to="historia">Ver historia</button>`:`<button class="btn small" data-visita-turno="${t.id}">Cargar visita</button>`):''}
+      ${recordable(t)?`<a class="btn small" target="_blank" rel="noopener" href="${waRecordatorio(t)}" data-recordar="${t.id}">${t.recordado?'Recordar de nuevo':'Recordar por WhatsApp'}</a>`:''}
+      <select data-estado="${t.id}" aria-label="Cambiar estado">${ESTADOS.map(e=>`<option value="${e}" ${e===t.estado?'selected':''}>${e[0].toUpperCase()+e.slice(1)}</option>`).join('')}</select>
+    </div>
+  </div>`;
+}
+
+function viewAgenda(){
+  const sel=state.day;
+  const start=addDays(sel,-((fromIso(sel).getDay()+6)%7));
+  const days=[...Array(7)].map((_,i)=>addDays(start,i));
+  const strip=days.map(d=>{
+    const n=db.turnos.filter(t=>t.fecha===d&&t.estado!=='cancelado').length;
+    const dt=fromIso(d);
+    return `<button class="day ${d===sel?'on':''} ${d===TODAY?'today':''}" data-day="${d}"><div class="dn">${DIAS[dt.getDay()]}</div><div class="dd">${dt.getDate()}</div><div class="dc">${n?n+' turno'+(n>1?'s':''):'–'}</div></button>`;
+  }).join('');
+  const list=db.turnos.filter(t=>t.fecha===sel).sort((a,b)=>a.hora.localeCompare(b.hora));
+  const count=e=>list.filter(t=>t.estado===e).length;
+  const summary=ESTADOS.filter(count).map(e=>`<span class="chip s-${e}">${count(e)} ${e}${count(e)>1?'s':''}</span>`).join('');
+  return `<div class="head"><div><h1>${sel===TODAY?'Hoy':fmtDate(sel)}</h1><p class="sub">${sel===TODAY?fmtDate(sel)+' · ':''}${list.length} turno${list.length===1?'':'s'}</p></div>
+      <div style="display:flex;gap:8px">${sel!==TODAY?'<button class="btn" data-day="'+TODAY+'">Ir a hoy</button>':''}<button class="btn" data-new="espontaneo">+ Sin turno</button><button class="btn primary" data-new="turno">+ Nuevo turno</button></div></div>
+    <div class="week"><button class="arrow" data-day="${addDays(start,-7)}" aria-label="Semana anterior">‹</button>${strip}<button class="arrow" data-day="${addDays(start,7)}" aria-label="Semana siguiente">›</button></div>
+    ${summary?`<div class="summary">${summary}</div>`:''}
+    ${(()=>{const act=list.filter(t=>t.estado!=='cancelado');const tot=act.reduce((s,t)=>s+totalDe(t),0),cob=act.filter(t=>t.pago==='cobrado').reduce((s,t)=>s+totalDe(t),0);
+      return tot?`<div class="caja"><div><span class="vl">Total del día</span><span class="vv">${money(tot)}</span></div><div><span class="vl">Cobrado</span><span class="vv">${money(cob)}</span></div><div><span class="vl">Falta cobrar</span><span class="vv">${money(tot-cob)}</span></div></div>`:''})()}
+    <div class="list">${list.length?list.map(t=>apptCard(t)).join(''):'<div class="empty">No hay turnos este día.<br><button class="btn link" data-new="turno">Agendar uno</button></div>'}</div>
+    ${agendaRecordatorios()}
+    ${agendaVacunas()}`;
+}
+
+function viewClientes(){
+  const q=norm(state.q);
+  const list=db.clientes.filter(c=>!q||norm([fullName(c),c.telefono,c.dni,c.direccion,...db.mascotas.filter(m=>m.cliente===c.id).map(m=>m.nombre)].join(' ')).includes(q))
+    .sort((a,b)=>a.apellido.localeCompare(b.apellido));
+  return `<div class="head"><div><h1>Clientes</h1><p class="sub">${db.clientes.length} dueños registrados</p></div><button class="btn primary" data-new="cliente">+ Nuevo cliente</button></div>
+    <input class="search" id="q" placeholder="Buscar por nombre, teléfono, DNI, dirección o mascota" value="${esc(state.q)}">
+    <div class="rows">${list.map(c=>{const ms=db.mascotas.filter(m=>m.cliente===c.id);
+      return `<button class="row" data-open-c="${c.id}"><span class="av">${esc(initials(c.nombre,c.apellido))}</span><span class="grow"><div class="t">${esc(c.apellido)}, ${esc(c.nombre)}</div><div class="d">${esc(c.telefono)}${c.direccion?' · '+esc(c.direccion):''} · ${ms.length?esc(ms.map(m=>m.nombre).join(', ')):'Sin mascotas'}</div></span></button>`}).join('')||'<div class="empty">Ningún cliente coincide con la búsqueda.</div>'}</div>`;
+}
+
+function viewMascotas(){
+  const q=state.q.toLowerCase();
+  const list=db.mascotas.filter(m=>!q||[m.nombre,m.raza,m.especie,fullName(cliente(m.cliente))].join(' ').toLowerCase().includes(q))
+    .sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  return `<div class="head"><div><h1>Mascotas</h1><p class="sub">${db.mascotas.length} pacientes</p></div><button class="btn primary" data-new="mascota">+ Nueva mascota</button></div>
+    <input class="search" id="q" placeholder="Buscar por nombre, raza o dueño" value="${esc(state.q)}">
+    <div class="rows">${list.map(m=>`<button class="row" data-open-m="${m.id}"><span class="av">${esc(m.nombre[0])}</span><span class="grow"><div class="t">${esc(m.nombre)} <span class="tag">${esc(m.especie)}</span></div><div class="d">${esc(m.raza)} · ${esc(edad(m.nacimiento))} · Dueño: ${esc(fullName(cliente(m.cliente)))}</div></span></button>`).join('')||'<div class="empty">Ninguna mascota coincide con la búsqueda.</div>'}</div>`;
+}
+
+function viewCliente(id){
+  const c=cliente(id);if(!c) return '';
+  const ms=db.mascotas.filter(m=>m.cliente===id);
+  const prox=db.turnos.filter(t=>ms.some(m=>m.id===t.mascota)&&t.fecha>=TODAY&&t.estado!=='cancelado').sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora));
+  return `<button class="btn small back" data-back>‹ Volver</button>
+    <div class="head"><div><h1>${esc(fullName(c))}</h1><p class="sub">Cliente</p></div><button class="btn" data-edit-c="${c.id}">Editar</button></div>
+    <div class="card"><dl class="kv">
+      <div><dt>Teléfono</dt><dd>${esc(c.telefono)}</dd></div><div><dt>DNI</dt><dd>${esc(c.dni)||'–'}</dd></div>
+      <div><dt>Email</dt><dd>${esc(c.email)||'–'}</dd></div><div><dt>Dirección</dt><dd>${esc(c.direccion)||'–'}</dd></div>
+    </dl>${c.notas?`<div class="note">${esc(c.notas)}</div>`:''}</div>
+    <div class="head"><h2>Mascotas</h2><button class="btn small" data-new="mascota" data-cliente="${c.id}">+ Agregar mascota</button></div>
+    <div class="rows">${ms.map(m=>`<button class="row" data-open-m="${m.id}"><span class="av">${esc(m.nombre[0])}</span><span class="grow"><div class="t">${esc(m.nombre)} <span class="tag">${esc(m.especie)}</span></div><div class="d">${esc(m.raza)} · ${esc(edad(m.nacimiento))} · ${esc(m.peso)} kg</div></span></button>`).join('')||'<div class="empty">Todavía no tiene mascotas cargadas.</div>'}</div>
+    <h2>Próximos turnos</h2>
+    <div class="list">${prox.map(t=>apptCard(t,true)).join('')||'<div class="empty">No tiene turnos próximos.</div>'}</div>`;
+}
+
+function viewMascota(id){
+  const m=mascota(id);if(!m) return '';
+  const c=cliente(m.cliente);
+  const ts=db.turnos.filter(t=>t.mascota===id).sort((a,b)=>(b.fecha+b.hora).localeCompare(a.fecha+a.hora));
+  const vs=visitasDe(id),es=estudiosDe(id);
+  const tabs=[['historia',`Historia clínica (${vs.length})`],['vacunas',`Vacunas`],['estudios',`Estudios (${es.length})`],['documentos',`Documentos (${docsDe(id).length})`],['turnos',`Turnos (${ts.length})`]];
+  let body='';
+  if(state.tab==='estudios') body=`<div class="tabact"><button class="btn primary" data-new="estudio" data-mascota="${m.id}">+ Subir estudio</button></div>
+    ${es.length?`<div class="files">${es.map(estudioCard).join('')}</div>`:'<div class="empty">Todavía no hay estudios cargados.<br>Podés subir fotos, radiografías, ecografías o análisis en PDF.</div>'}`;
+  else if(state.tab==='vacunas') body=viewVacunas(m);
+  else if(state.tab==='documentos') body=viewDocumentos(m);
+  else if(state.tab==='turnos') body=`<div class="list">${ts.map(t=>apptCard(t,true)).join('')||'<div class="empty">Todavía no tiene turnos.</div>'}</div>`;
+  else body=`<div class="tabact"><button class="btn primary" data-new="visita" data-mascota="${m.id}">+ Nueva visita</button><button class="btn" data-enviar="${m.id}" ${vs.length?'':'disabled'}>Enviar al dueño</button></div>
+    ${vs.length?`<div class="list">${vs.map((v,i)=>visitaCard(v,vs[i+1],m)).join('')}</div>`:'<div class="empty">Todavía no hay visitas registradas.<br>Cargá la primera con "Nueva visita".</div>'}`;
+  return `<button class="btn small back" data-back>‹ Volver</button>
+    <div class="head"><div><h1>${esc(m.nombre)}</h1><p class="sub">${esc(m.especie)}${m.raza?' · '+esc(m.raza):''} · Dueño: <button class="btn link" data-open-c="${c?.id}">${esc(fullName(c))}</button></p></div>
+      <div style="display:flex;gap:8px"><button class="btn" data-edit-m="${m.id}">Editar</button><button class="btn primary" style="display:inline-flex" data-new="turno" data-mascota="${m.id}">+ Turno</button></div></div>
+    <div class="card"><dl class="kv">
+      <div><dt>Sexo</dt><dd>${esc(m.sexo)}</dd></div><div><dt>Edad</dt><dd>${esc(edad(m.nacimiento))||'–'}</dd></div>
+      <div><dt>Peso</dt><dd>${m.peso?esc(m.peso)+' kg':'–'}</dd></div><div><dt>Castrado/a</dt><dd>${m.castrado?'Sí':'No'}</dd></div>
+      <div><dt>Teléfono del dueño</dt><dd>${esc(c?.telefono)}</dd></div>
+    </dl>${m.incompleta?`<div class="note">Ficha incompleta: se cargó al dar el primer turno. <button class="btn link" data-edit-m="${m.id}">Completar ficha</button></div>`:''}${m.notas?`<div class="note">${esc(m.notas)}</div>`:''}</div>
+    <div class="tabsbar" role="tablist">${tabs.map(([k,l])=>`<button role="tab" aria-selected="${state.tab===k}" class="${state.tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
+    ${body}`;
+}
+
+/* Historia clínica */
+const TEMP={Perro:[37.5,39.2],Gato:[37.8,39.2]};
+const TIPOS=['Análisis de sangre','Ecografía','Radiografía','Foto','Otro'];
+const visitasDe=id=>(db.visitas||[]).filter(v=>v.mascota===id).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+const estudiosDe=id=>(db.estudios||[]).filter(e=>e.mascota===id).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+const fmtCorto=s=>{const d=fromIso(s);return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`};
+const num=s=>parseFloat(String(s).replace(',','.'));
+function tempFlag(temp,especie){
+  const r=TEMP[especie],t=num(temp);if(!r||isNaN(t)) return '';
+  return t>r[1]?' <span class="chip s-cancelado">Fiebre</span>':t<r[0]?' <span class="chip s-ausente">Baja</span>':'';
+}
+function visitaCard(v,prev,m){
+  const dp=prev&&!isNaN(num(v.peso))&&!isNaN(num(prev.peso))?num(v.peso)-num(prev.peso):null;
+  return `<article class="visit">
+    <div class="vhead"><span class="vdate">${esc(fmtCorto(v.fecha))}</span><span class="tag">${esc(v.motivo)}</span><span class="meta">${esc(v.prof)}</span></div>
+    <div class="vitals">
+      <div><span class="vl">Temperatura</span><span class="vv">${v.temp?esc(v.temp)+' °C':'–'}${tempFlag(v.temp,m.especie)}</span></div>
+      <div><span class="vl">Peso</span><span class="vv">${v.peso?esc(v.peso)+' kg':'–'}${dp!==null&&Math.abs(dp)>=0.05?` <small class="${dp>0?'up':'down'}">${dp>0?'+':''}${dp.toFixed(1).replace('.',',')} kg</small>`:''}</span></div>
+    </div>
+    ${v.obs?`<p><b>Observaciones:</b> ${esc(v.obs)}</p>`:''}
+    ${v.trat?`<p><b>Tratamiento:</b> ${esc(v.trat)}</p>`:''}
+    <div class="vact"><button class="btn small" data-doc="receta" data-visita="${v.id}">Receta</button><button class="btn small" data-doc="indicaciones" data-visita="${v.id}">Indicaciones</button><button class="btn small" data-doc="orden" data-visita="${v.id}">Orden de estudio</button></div>
+  </article>`;
+}
+
+function formVisita(pre){
+  const m=mascota(pre.mascota);
+  openModal(`<h2>Nueva visita · ${esc(m.nombre)}</h2><form class="form" novalidate>
+    ${field('v-f','Fecha',`<input id="v-f" type="date" name="fecha" value="${pre.fecha||TODAY}">`)}
+    ${field('v-mo','Motivo',`<select id="v-mo" name="motivo">${opts(MOTIVOS,pre.motivo)}</select>`)}
+    ${field('v-t','Temperatura (°C)',`<input id="v-t" name="temp" inputmode="decimal" placeholder="Ej.: 38,5">`)}
+    ${field('v-p','Peso (kg)',`<input id="v-p" name="peso" inputmode="decimal" placeholder="Último: ${esc(m.peso||'–')}">`)}
+    ${field('v-pr','Profesional',`<select id="v-pr" name="prof">${opts(PROFS,pre.prof)}</select>`,true)}
+    ${field('v-o','Observaciones',`<textarea id="v-o" name="obs" placeholder="Qué se vio en la consulta"></textarea>`,true)}
+    ${field('v-tr','Tratamiento e indicaciones',`<textarea id="v-tr" name="trat" placeholder="Medicación, dosis, próximo control"></textarea>`,true)}
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Guardar visita</button></div></form>`,
+  fd=>{
+    const d=Object.fromEntries(fd);
+    for(const k of ['temp','peso']) d[k]=d[k].trim().replace('.',',');
+    if(d.temp&&(isNaN(num(d.temp))||num(d.temp)<30||num(d.temp)>45)) return 'La temperatura tiene que ser un número entre 30 y 45 °C.';
+    if(d.peso&&(isNaN(num(d.peso))||num(d.peso)<=0)) return 'El peso tiene que ser un número mayor a 0.';
+    if(!d.temp&&!d.peso&&!d.obs.trim()) return 'Cargá al menos la temperatura, el peso o una observación.';
+    db.visitas.push({id:uid(),mascota:m.id,turno:pre.turno,...d});
+    if(d.peso&&!visitasDe(m.id).some(v=>v.peso&&v.fecha>d.fecha)) m.peso=d.peso.replace(',','.');
+    save();state.detail={type:'mascota',id:m.id};state.tab='historia';
+  });
+}
+
+/* Vacunas */
+const VACUNAS={Perro:['Séxtuple','Antirrábica','Tos de las perreras','Giardia'],Gato:['Triple felina','Antirrábica','Leucemia felina'],Otro:['Antirrábica']};
+const diasEntre=(a,b)=>Math.round((fromIso(a)-fromIso(b))/864e5);
+function sampleVacunas(turnos){
+  const v=(dia,mascota,vacuna,prox,lote,prof='Dra. Paula Ríos')=>({id:uid(),mascota,vacuna,fecha:addDays(TODAY,dia),proxima:prox===null?'':addDays(TODAY,prox),lote,prof});
+  const vs=[
+    v(-365,'m1','Antirrábica',0,'RB-2231'),v(-365,'m1','Séxtuple',0,'SX-8812'),
+    v(-30,'m4','Séxtuple',-9,'SX-9104'),v(-9,'m4','Séxtuple',2,'SX-9120'),v(-9,'m4','Giardia',null,'GI-0412'),
+    v(-340,'m2','Triple felina',25,'TF-5520'),
+    v(-400,'m8','Antirrábica',-35,'RB-1987','Dr. Martín Sosa'),
+    v(-200,'m3','Antirrábica',165,'RB-2104','Dr. Martín Sosa'),
+    v(-370,'m6','Séxtuple',-5,'SX-8790')
+  ];
+  const luna=turnos&&turnos.find(t=>t.mascota==='m4'&&t.fecha===addDays(TODAY,2));
+  if(luna) vs[3].turnoProx=luna.id;
+  return vs;
+}
+function pendientes(mid){
+  const last=new Map();
+  for(const v of db.vacunas.filter(x=>!mid||x.mascota===mid)){
+    const k=v.mascota+'|'+v.vacuna,o=last.get(k);
+    if(!o||v.fecha>o.fecha) last.set(k,v);
+  }
+  return [...last.values()].filter(v=>v.proxima).sort((a,b)=>a.proxima.localeCompare(b.proxima));
+}
+const turnoDe=v=>v.turnoProx&&db.turnos.find(t=>t.id===v.turnoProx&&t.estado!=='cancelado');
+function venceChip(fecha){
+  const d=diasEntre(fecha,TODAY);
+  if(d<0) return `<span class="chip s-cancelado">Vencida hace ${-d} día${d===-1?'':'s'}</span>`;
+  if(d===0) return '<span class="chip s-ausente">Vence hoy</span>';
+  if(d<=7) return `<span class="chip s-ausente">En ${d} día${d===1?'':'s'}</span>`;
+  return `<span class="chip s-confirmado">En ${d} días</span>`;
+}
+function proximaRow(v,conMascota){
+  const t=turnoDe(v),m=mascota(v.mascota);
+  return `<div class="vrow">
+    <div class="grow">${conMascota?`<button class="btn link" data-open-m="${m.id}" data-tab-to="vacunas">${esc(m.nombre)}</button> · `:''}<b>${esc(v.vacuna)}</b>
+      <div class="meta">Próxima dosis: ${esc(fmtCorto(v.proxima))}${conMascota?' · '+esc(fullName(cliente(m.cliente)))+' · '+esc(cliente(m.cliente)?.telefono):''}</div></div>
+    ${venceChip(v.proxima)}
+    ${t?`<span class="chip s-atendido">Turno ${esc(fmtCorto(t.fecha).slice(0,5))} ${esc(t.hora)}</span>`:`<button class="btn small" data-agendar-vac="${v.id}">Agendar turno</button>`}
+  </div>`;
+}
+function viewVacunas(m){
+  const pend=pendientes(m.id);
+  const hist=db.vacunas.filter(v=>v.mascota===m.id).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  return `<div class="tabact"><button class="btn primary" data-new="vacuna" data-mascota="${m.id}">+ Registrar vacuna</button></div>
+    <h2>Próximas dosis</h2>
+    ${pend.length?`<div class="rows">${pend.map(v=>proximaRow(v)).join('')}</div>`:'<div class="empty">No hay dosis programadas.</div>'}
+    <h2>Vacunas aplicadas</h2>
+    ${hist.length?`<div class="tablewrap"><table class="vtab"><thead><tr><th>Fecha</th><th>Vacuna</th><th>Lote</th><th>Profesional</th></tr></thead><tbody>${hist.map(v=>`<tr><td>${esc(fmtCorto(v.fecha))}</td><td>${esc(v.vacuna)}</td><td>${esc(v.lote)||'–'}</td><td>${esc(v.prof)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Todavía no tiene vacunas registradas.</div>'}`;
+}
+function agendaVacunas(){
+  const lim=addDays(TODAY,7);
+  const ps=pendientes().filter(v=>v.proxima<=lim&&!turnoDe(v));
+  if(!ps.length) return '';
+  return `<h2>Vacunas por vencer sin turno</h2><p class="sub" style="margin-top:-10px">Vencidas o que vencen en los próximos 7 días. Avisale al dueño y agendá el turno.</p>
+    <div class="rows">${ps.map(v=>proximaRow(v,true)).join('')}</div>`;
+}
+function agendarVacuna(id){
+  const v=db.vacunas.find(x=>x.id===id);
+  formTurno({mascota:v.mascota,fecha:v.proxima<TODAY?TODAY:v.proxima,motivo:'Vacunación',notas:`${v.vacuna} (próxima dosis)`,vacuna:v.id});
+}
+function formVacuna(mid){
+  const m=mascota(mid);
+  const lista=VACUNAS[m.especie]||VACUNAS.Otro;
+  openModal(`<h2>Registrar vacuna · ${esc(m.nombre)}</h2><form class="form" novalidate>
+    ${field('va-v','Vacuna',`<select id="va-v" name="vacuna">${opts([...lista,'Otra'])}</select>`)}
+    <div class="field" data-otra hidden><label for="va-o">Nombre de la vacuna</label><input id="va-o" name="otra"></div>
+    ${field('va-f','Fecha de aplicación',`<input id="va-f" type="date" name="fecha" value="${TODAY}">`)}
+    ${field('va-l','Lote',`<input id="va-l" name="lote" placeholder="Ej.: SX-9120">`)}
+    ${field('va-p','Profesional',`<select id="va-p" name="prof">${opts(PROFS)}</select>`)}
+    ${field('va-px','Próxima dosis',`<select id="va-px" name="plazo">${opts([['365','En 1 año'],['21','En 21 días'],['30','En 30 días'],['otra','Otra fecha'],['','Sin próxima dosis']],'365')}</select>`)}
+    <div class="field" data-fecha-prox hidden><label for="va-pf">Fecha de la próxima dosis</label><input id="va-pf" type="date" name="proxFecha"></div>
+    <label class="check full" data-agendar-box><input type="checkbox" id="va-a" name="agendar"> Agendar ya el turno para la próxima dosis</label>
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Guardar vacuna</button></div></form>`,
+  fd=>{
+    const d=Object.fromEntries(fd);
+    const nombre=d.vacuna==='Otra'?d.otra.trim():d.vacuna;
+    if(!nombre) return 'Escribí el nombre de la vacuna.';
+    if(!d.fecha) return 'Completá la fecha de aplicación.';
+    let prox='';
+    if(d.plazo==='otra'){if(!d.proxFecha) return 'Elegí la fecha de la próxima dosis.';prox=d.proxFecha}
+    else if(d.plazo) prox=addDays(d.fecha,Number(d.plazo));
+    if(prox&&prox<=d.fecha) return 'La próxima dosis tiene que ser después de la fecha de aplicación.';
+    const v={id:uid(),mascota:mid,vacuna:nombre,fecha:d.fecha,proxima:prox,lote:d.lote.trim(),prof:d.prof};
+    db.vacunas.push(v);save();state.tab='vacunas';
+    if(prox&&fd.has('agendar')) setTimeout(()=>agendarVacuna(v.id));
+  },f=>{
+    const upd=()=>{
+      f.querySelector('[data-otra]').hidden=f.vacuna.value!=='Otra';
+      f.querySelector('[data-fecha-prox]').hidden=f.plazo.value!=='otra';
+      f.querySelector('[data-agendar-box]').hidden=!f.plazo.value;
+    };
+    upd();f.addEventListener('change',upd);
+  });
+}
+
+/* Lista de precios y cobros */
+const CATEGORIAS=['Consultas','Vacunas','Desparasitación','Cirugías','Estudios','Medicamentos','Estética','Otros'];
+const MEDIOS=['Efectivo','Débito','Crédito','Link de pago','QR','Transferencia'];
+let ALIAS='';
+const money=n=>'$ '+Math.round(Number(n)||0).toLocaleString('es-AR');
+function samplePrecios(){
+  const p=(id,categoria,nombre,precio)=>({id,categoria,nombre,precio});
+  return [
+    p('p1','Consultas','Consulta general',15000),p('p2','Consultas','Control',10000),p('p3','Consultas','Consulta a domicilio',25000),p('p4','Consultas','Urgencia fuera de horario',30000),
+    p('p5','Vacunas','Séxtuple',22000),p('p6','Vacunas','Antirrábica',12000),p('p7','Vacunas','Triple felina',20000),p('p8','Vacunas','Tos de las perreras',18000),p('p9','Vacunas','Leucemia felina',22000),p('p10','Vacunas','Giardia',15000),
+    p('p11','Desparasitación','Desparasitación interna',6000),p('p12','Desparasitación','Pipeta antipulgas',9000),
+    p('p13','Cirugías','Castración gato',45000),p('p14','Cirugías','Castración perro',70000),p('p15','Cirugías','Castración perra',90000),p('p16','Cirugías','Extracción dental',60000),
+    p('p17','Estudios','Análisis de sangre',28000),p('p18','Estudios','Ecografía',35000),p('p19','Estudios','Radiografía',30000),
+    p('p20','Medicamentos','Meloxicam (comprimido)',800),p('p21','Medicamentos','Antibiótico inyectable',7000),p('p22','Medicamentos','Suero subcutáneo',8000),
+    p('p23','Estética','Baño perro chico',12000),p('p24','Estética','Baño perro grande',20000),p('p25','Estética','Peluquería completa',25000)
+  ];
+}
+const POR_MOTIVO={Consulta:'p1',Control:'p2',Desparasitación:'p11',Peluquería:'p25',Baño:'p23'};
+const precio=id=>db.precios.find(p=>p.id===id);
+const itemDe=(p,cant=1)=>({id:uid(),precioId:p.id,nombre:p.nombre,precio:p.precio,cant});
+function defaultPrecio(t){
+  if(t.motivo==='Vacunación'){const n=norm(t.notas);const p=db.precios.find(p=>p.categoria==='Vacunas'&&n.includes(norm(p.nombre)));if(p) return p.id}
+  return POR_MOTIVO[t.motivo]||'';
+}
+function seedCobros(){
+  for(const t of db.turnos) if(!t.items) t.items=[];
+}
+const totalDe=t=>(t.items||[]).reduce((s,i)=>s+i.precio*i.cant,0);
+const preciosOptions=sel=>CATEGORIAS.map(c=>{const ps=db.precios.filter(p=>p.categoria===c).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  return ps.length?`<optgroup label="${esc(c)}">${ps.map(p=>`<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(p.nombre)} · ${money(p.precio)}</option>`).join('')}</optgroup>`:''}).join('');
+
+function viewPrecios(){
+  const q=norm(state.q);
+  const list=db.precios.filter(p=>!q||norm(p.nombre+' '+p.categoria).includes(q));
+  const groups=CATEGORIAS.map(c=>{const ps=list.filter(p=>p.categoria===c).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+    return ps.length?`<section class="pgroup"><h2>${esc(c)}</h2><div class="rows">${ps.map(p=>`<button class="row" data-edit-p="${p.id}"><span class="grow"><div class="t">${esc(p.nombre)}</div></span><span class="price">${money(p.precio)}</span></button>`).join('')}</div></section>`:''}).join('');
+  return `<div class="head"><div><h1>Lista de precios</h1><p class="sub">${db.precios.length} servicios y productos</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-aumento>Aumentar precios</button><button class="btn primary" style="display:inline-flex" data-new="precio">+ Nuevo precio</button></div></div>
+    <input class="search" id="q" placeholder="Buscar servicio o producto" value="${esc(state.q)}">
+    ${groups||'<div class="empty">Ningún precio coincide con la búsqueda.</div>'}`;
+}
+function formPrecio(p){
+  const v=p||{categoria:'Consultas'};
+  openModal(`<h2>${p?'Editar precio':'Nuevo precio'}</h2><form class="form" novalidate>
+    ${field('p-n','Nombre',`<input id="p-n" name="nombre" value="${esc(v.nombre)}" placeholder="Ej.: Consulta general">`,true)}
+    ${field('p-c','Categoría',`<select id="p-c" name="categoria">${opts(CATEGORIAS,v.categoria)}</select>`)}
+    ${field('p-p','Precio ($)',`<input id="p-p" name="precio" inputmode="numeric" value="${v.precio??''}">`)}
+    ${p?'<p class="hint full">Cambiar el precio no modifica los turnos que ya tienen este servicio cargado.</p>':''}
+    <div class="err full" role="alert"></div>
+    <div class="mact full">${p?'<button type="button" class="btn danger" data-borrar style="margin-right:auto">Eliminar</button>':''}<button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Guardar</button></div></form>`,
+  fd=>{
+    const nombre=fd.get('nombre').trim(),pr=Number(String(fd.get('precio')).replace(/[$.\s]/g,'').replace(',','.'));
+    if(!nombre) return 'Escribí el nombre del servicio o producto.';
+    if(!(pr>=0)||String(fd.get('precio')).trim()==='') return 'El precio tiene que ser un número, sin letras.';
+    if(p) Object.assign(p,{nombre,categoria:fd.get('categoria'),precio:pr}); else db.precios.push({id:uid(),nombre,categoria:fd.get('categoria'),precio:pr});
+    save();
+  },f=>{
+    const b=f.querySelector('[data-borrar]');if(!b) return;
+    b.addEventListener('click',()=>{
+      if(b.dataset.ok){db.precios=db.precios.filter(x=>x.id!==p.id);save();closeModal();render()}
+      else{b.dataset.ok='1';b.textContent='Confirmar: eliminar'}
+    });
+  });
+}
+function formAumento(){
+  const nuevo=(p,modo,val,red)=>{const n=modo==='monto'?p.precio+val:p.precio*(1+val/100);return Math.max(0,red?Math.round(n/100)*100:Math.round(n))};
+  openModal(`<h2>Aumentar precios</h2><form class="form" novalidate>
+    <div class="seg full" role="radiogroup" aria-label="Tipo de aumento">
+      <label><input type="radio" name="modo" value="pct" checked> Porcentaje (%)</label>
+      <label><input type="radio" name="modo" value="monto"> Monto fijo ($)</label>
+    </div>
+    ${field('a-p','Porcentaje de aumento',`<input id="a-p" name="val" inputmode="decimal" placeholder="Ej.: 10">`)}
+    ${field('a-c','Aplicar a',`<select id="a-c" name="cat"><option value="">Toda la lista</option>${opts(CATEGORIAS)}</select>`)}
+    <label class="check full"><input type="checkbox" id="a-r" name="redondeo" checked> Redondear a la centena (ej.: $ 16.537 → $ 16.500)</label>
+    <p class="hint full" data-prev></p>
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Aplicar aumento</button></div></form>`,
+  fd=>{
+    const modo=fd.get('modo'),val=Number(String(fd.get('val')).replace(modo==='monto'?/[$.\s]/g:/\s/g,'').replace(',','.'));
+    if(modo==='pct'&&!(val>0&&val<=300)) return 'Escribí un porcentaje entre 1 y 300.';
+    if(modo==='monto'&&!(val>0)) return 'Escribí el monto en pesos que querés sumar, por ejemplo 2000.';
+    const cat=fd.get('cat');
+    for(const p of db.precios) if(!cat||p.categoria===cat) p.precio=nuevo(p,modo,val,fd.has('redondeo'));
+    save();
+  },f=>{
+    const upd=()=>{
+      const modo=f.modo.value,raw=f.val.value;
+      f.querySelector('label[for=a-p]').textContent=modo==='monto'?'Monto a sumar a cada precio ($)':'Porcentaje de aumento';
+      f.val.placeholder=modo==='monto'?'Ej.: 2000':'Ej.: 10';
+      const val=Number(raw.replace(modo==='monto'?/[$.\s]/g:/\s/g,'').replace(',','.'));
+      const ps=db.precios.filter(p=>!f.cat.value||p.categoria===f.cat.value);
+      f.querySelector('[data-prev]').textContent=val>0&&ps.length?`Se van a actualizar ${ps.length} precios. Ejemplo: ${ps[0].nombre} pasa de ${money(ps[0].precio)} a ${money(nuevo(ps[0],modo,val,f.redondeo.checked))}.`:'';
+    };
+    f.addEventListener('input',upd);f.addEventListener('change',upd);
+  });
+}
+
+function formCobro(tid){
+  const t=db.turnos.find(x=>x.id===tid),m=mascota(t.mascota);
+  let items=(t.items||[]).map(i=>({...i}));
+  let link=t.link||'';
+  openModal(`<h2>Cobro · ${esc(m.nombre)}</h2><p class="sub" style="margin-top:-10px">${esc(fmtDate(t.fecha))} ${esc(t.hora)} · ${esc(t.motivo)} · ${esc(fullName(cliente(m.cliente)))}</p>
+    <form class="form" novalidate>
+    <div class="full" data-items></div>
+    <div class="full addrow">
+      <select id="co-s" aria-label="Agregar de la lista de precios"><option value="">Agregar de la lista de precios…</option>${preciosOptions()}</select>
+      <button type="button" class="btn" data-add>Agregar</button>
+    </div>
+    <details class="full extra"><summary>Agregar algo que no está en la lista</summary>
+      <div class="addrow"><input id="co-n" placeholder="Ej.: Sutura de herida"><input id="co-p" inputmode="numeric" placeholder="Precio" style="max-width:110px"><button type="button" class="btn" data-add-extra>Agregar</button></div>
+    </details>
+    <div class="full pagobox">
+      ${t.pago==='cobrado'?`<div class="note ok">Cobrado con ${esc(t.medio)}${t.cuotas>1?' en '+t.cuotas+' cuotas':''}. Si lo cambiás, se guarda el nuevo medio.</div>`:''}
+      <div class="vl">Cómo paga</div>
+      <div class="metodos" role="radiogroup" aria-label="Medio de pago">${MEDIOS.map(md=>`<label><input type="radio" name="medio" value="${md}" ${md===(MEDIOS.includes(t.medio)?t.medio:'Efectivo')?'checked':''}> ${md}</label>`).join('')}</div>
+      <div data-panel></div>
+    </div>
+    <input type="hidden" name="accion" value="">
+    <div class="err full" role="alert"></div>
+    <div class="mact full" style="flex-wrap:wrap"><button type="button" class="btn" data-close>Cancelar</button><button type="button" class="btn" data-guardar>Guardar sin cobrar</button><button type="button" class="btn primary" data-cobrar>Registrar cobro</button></div></form>`,
+  fd=>{
+    const accion=fd.get('accion');
+    if(accion==='cobrar'&&!items.length) return 'Agregá al menos un ítem antes de cobrar.';
+    t.items=items;t.medio=fd.get('medio');t.cuotas=Number(fd.get('cuotas')||1);
+    if(accion==='cobrar') t.pago='cobrado';
+    else if(t.pago!=='cobrado') t.pago=link?'esperando':'pendiente';
+    if(link) t.link=link;
+    save();
+  },f=>{
+    const total=()=>items.reduce((s,i)=>s+i.precio*i.cant,0);
+    const panel=f.querySelector('[data-panel]');
+    const c=cliente(m.cliente);
+    const msg=()=>`Hola ${c.nombre}, te paso el link para pagar la atención de ${m.nombre} (${fmtCorto(t.fecha)}): ${money(total())}.\n${link}\n${CLINICA.nombre}`;
+    const copiar=async(txt,el)=>{try{await navigator.clipboard.writeText(txt);el.textContent='Copiado'}catch(e){el.textContent='No se pudo copiar, seleccioná el texto'}};
+    const drawPanel=()=>{
+      const md=f.medio.value;
+      let h='';
+      if(md==='Efectivo') h=`<div class="addrow"><input id="co-r" inputmode="numeric" placeholder="Con cuánto paga (opcional)"></div><p class="hint" data-vuelto></p>`;
+      else if(md==='Débito') h=`<p class="hint">Pasá la tarjeta por el posnet por ${money(total())} y registrá el cobro.</p>`;
+      else if(md==='Crédito') h=`<div class="addrow"><select id="co-q" name="cuotas" aria-label="Cuotas">${opts([['1','1 pago'],['3','3 cuotas'],['6','6 cuotas']],String(t.cuotas||1))}</select></div><p class="hint">Pasá la tarjeta por el posnet y registrá el cobro.</p>`;
+      else if(md==='Transferencia') h=`<div class="linkbox"><span>Alias: <b>${ALIAS}</b></span><button type="button" class="btn small" data-copy-alias>Copiar alias</button></div><p class="hint">Cuando veas la transferencia en la cuenta, registrá el cobro.</p>`;
+      else if(md==='Link de pago') h=link?`<div class="linkbox"><code>${esc(link)}</code><button type="button" class="btn small" data-copy-link>Copiar</button><a class="btn small primary" target="_blank" rel="noopener" href="https://wa.me/${waNumber(c.telefono)}?text=${encodeURIComponent(msg())}">Enviar por WhatsApp</a></div><p class="hint">Link de prueba: no cobra de verdad. Si lo enviás y todavía no pagó, tocá "Guardar sin cobrar" y el turno queda como "Link enviado". Cuando pague, registrá el cobro.</p>`
+        :`<button type="button" class="btn" data-gen-link>Generar link de pago por ${money(total())}</button><p class="hint">El cliente paga desde su celular con tarjeta, dinero en cuenta o Mercado Pago.</p>`;
+      else if(md==='QR') h=`<div class="qrwrap"><div data-qr></div><div><b>${money(total())}</b><p class="hint">El cliente escanea el código con Mercado Pago o la app de su banco. Es un QR de prueba: no cobra de verdad.</p></div></div>`;
+      panel.innerHTML=h;
+      if(md==='QR'){const el=panel.querySelector('[data-qr]');const txt=`https://example.com/pago/qr/${t.id}?monto=${total()}`;
+        if(window.QRCode){new QRCode(el,{text:txt,width:150,height:150,colorDark:'#1d2420',colorLight:'#ffffff'})}else el.innerHTML='<div class="qrph">QR</div>'}
+    };
+    drawPanel();
+    f.querySelectorAll('[name=medio]').forEach(r=>r.addEventListener('change',drawPanel));
+    panel.addEventListener('input',e=>{if(e.target.id==='co-r'){const v=Number(e.target.value.replace(/[$.\s]/g,''));const out=panel.querySelector('[data-vuelto]');
+      out.textContent=!v?'':v<total()?`Faltan ${money(total()-v)}.`:`Vuelto: ${money(v-total())}`}});
+    panel.addEventListener('click',e=>{const b=e.target.closest('button');if(!b) return;
+      if('genLink' in b.dataset){link=`https://example.com/pago/PT-${t.id.toUpperCase()}`;drawPanel()}
+      else if('copyLink' in b.dataset) copiar(link,b);
+      else if('copyAlias' in b.dataset) copiar(ALIAS,b)});
+    f.querySelector('[data-guardar]').addEventListener('click',()=>{f.accion.value='guardar';f.requestSubmit()});
+    f.querySelector('[data-cobrar]').addEventListener('click',()=>{f.accion.value='cobrar';f.requestSubmit()});
+    const box=f.querySelector('[data-items]'),err=f.querySelector('.err');
+    let draw=()=>{
+      box.innerHTML=items.length?`<div class="tablewrap"><table class="vtab cobro"><thead><tr><th>Detalle</th><th>Cant.</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead><tbody>${items.map((i,k)=>`<tr>
+        <td class="wrap">${esc(i.nombre)}${i.precioId?'':' <span class="tag">Extra</span>'}</td>
+        <td><input class="mini" type="number" min="1" value="${i.cant}" data-k="${k}" data-f="cant" aria-label="Cantidad"></td>
+        <td><input class="mini wide" inputmode="numeric" value="${i.precio}" data-k="${k}" data-f="precio" aria-label="Precio"></td>
+        <td>${money(i.precio*i.cant)}</td>
+        <td><button type="button" class="btn link" data-del="${k}" aria-label="Quitar">Quitar</button></td></tr>`).join('')}</tbody>
+</table></div><div class="totline"><span>Total a cobrar</span><span class="tot">${money(items.reduce((s,i)=>s+i.precio*i.cant,0))}</span></div>`
+        :'<div class="empty">Todavía no hay nada para cobrar en este turno.</div>';
+    };
+    const _draw=draw;draw=()=>{_draw();if(typeof drawPanel==='function') drawPanel()};
+    draw();
+    box.addEventListener('change',e=>{const k=e.target.dataset.k;if(k===undefined) return;const v=Number(e.target.value.replace(/[$.\s]/g,''));
+      if(e.target.dataset.f==='cant') items[k].cant=Math.max(1,Math.round(v)||1); else items[k].precio=v>=0?v:items[k].precio;setTimeout(draw)});
+    box.addEventListener('click',e=>{const k=e.target.dataset.del;if(k!==undefined){items.splice(Number(k),1);draw()}});
+    f.querySelector('[data-add]').addEventListener('click',()=>{const s=f.querySelector('#co-s');if(!s.value){err.textContent='Elegí algo de la lista para agregar.';return}
+      const ex=items.find(i=>i.precioId===s.value);if(ex) ex.cant++; else items.push(itemDe(precio(s.value)));s.value='';err.textContent='';draw()});
+    f.querySelector('[data-add-extra]').addEventListener('click',()=>{const n=f.querySelector('#co-n'),p=f.querySelector('#co-p');const v=Number(p.value.replace(/[$.\s]/g,''));
+      if(!n.value.trim()||!(v>=0)||!p.value.trim()){err.textContent='Escribí qué es y cuánto sale.';return}
+      items.push({id:uid(),precioId:'',nombre:n.value.trim(),precio:v,cant:1});n.value='';p.value='';err.textContent='';draw()});
+  });
+}
+
+/* Documentos en PDF: receta, orden de estudio, indicaciones */
+let CLINICA={nombre:'',dir:'',tel:''};
+const MATRICULA={'Dra. Paula Ríos':'M.P. 4521','Dr. Martín Sosa':'M.P. 3877'};
+const DOCS={receta:'Receta',orden:'Orden de estudio',indicaciones:'Indicaciones de medicación'};
+const ESTUDIOS_ORDEN=['Hemograma completo','Perfil bioquímico','Perfil renal','Perfil hepático','Orina completa','Coproparasitológico','Radiografía','Ecografía abdominal','Ecocardiograma','Electrocardiograma'];
+const VIAS=['Oral','Tópica','Ótica','Oftálmica','Inyectable'];
+const FRECS=[['6','Cada 6 h'],['8','Cada 8 h'],['12','Cada 12 h'],['24','Cada 24 h'],['0','Una sola vez']];
+const docsDe=id=>(db.documentos||[]).filter(d=>d.mascota===id).sort((a,b)=>b.creado.localeCompare(a.creado));
+
+function viewDocumentos(m){
+  const ds=docsDe(m.id);
+  return `<div class="tabact"><button class="btn primary" data-doc="receta" data-mascota="${m.id}">+ Receta</button><button class="btn" data-doc="orden" data-mascota="${m.id}">+ Orden de estudio</button><button class="btn" data-doc="indicaciones" data-mascota="${m.id}">+ Indicaciones</button></div>
+    ${ds.length?`<div class="rows">${ds.map(d=>{const msg=(db.mensajes||[]).filter(x=>x.docId===d.id).pop();return `<div class="vrow"><div class="grow"><b>${esc(DOCS[d.tipo])}</b><div class="meta">${esc(fmtCorto(d.fecha))} · ${esc(d.prof)} · ${esc(resumenDoc(d))}</div></div>
+      ${msg?.enviado?`<button class="chip s-atendido chipbtn" data-ver-msg="${msg.id}">WhatsApp enviado ${hora(msg.enviado)}</button>`:`<button class="btn small" data-enviar-doc="${d.id}">Enviar por WhatsApp</button>`}
+      <button class="btn small" data-redoc="${d.id}">Descargar PDF</button></div>`}).join('')}</div>`
+      :'<div class="empty">Todavía no hay documentos.<br>Las recetas, órdenes e indicaciones que generes quedan guardadas acá.</div>'}`;
+}
+function resumenDoc(d){
+  if(d.tipo==='orden') return d.estudios.join(', ');
+  return d.meds.map(x=>x.nombre).join(', ')||d.generales||'';
+}
+
+function formDoc(tipo,mid,visita){
+  const m=mascota(mid);
+  const nuevoMed=()=>tipo==='receta'?{cantidad:'1'}:{frec:'12',via:'Oral'};
+  let meds=[nuevoMed()];
+  const medRow=(x,k)=>tipo==='receta'
+    ?`<div class="medrow" data-k="${k}"><input data-f="nombre" placeholder="Medicamento y concentración" value="${esc(x.nombre)}"><input data-f="presentacion" placeholder="Presentación (ej.: comp. x 20)" value="${esc(x.presentacion)}"><input data-f="cantidad" placeholder="Cant." value="${esc(x.cantidad||'1')}" class="short"><button type="button" class="btn link" data-delmed="${k}">Quitar</button></div>`
+    :`<div class="medrow" data-k="${k}"><input data-f="nombre" placeholder="Medicamento" value="${esc(x.nombre)}"><input data-f="dosis" placeholder="Dosis (ej.: 1 comprimido)" value="${esc(x.dosis)}">
+      <select data-f="frec" aria-label="Frecuencia">${opts(FRECS,x.frec||'12')}</select><input data-f="dias" inputmode="numeric" placeholder="Días" value="${esc(x.dias)}" class="short" aria-label="Días">
+      <select data-f="via" aria-label="Vía">${opts(VIAS,x.via||'Oral')}</select><input data-f="nota" placeholder="Nota (ej.: con comida)" value="${esc(x.nota)}"><button type="button" class="btn link" data-delmed="${k}">Quitar</button></div>`;
+  const body=tipo==='orden'
+    ?`<div class="full field"><span class="flabel">Estudios a realizar</span><div class="checks">${ESTUDIOS_ORDEN.map((e,i)=>`<label class="check"><input type="checkbox" name="est" value="${esc(e)}" id="o-${i}"> ${esc(e)}</label>`).join('')}</div></div>
+      ${field('o-otro','Otro estudio o detalle (región, vistas)',`<input id="o-otro" name="otro" placeholder="Ej.: Rx de cadera, vista ventrodorsal">`,true)}
+      ${field('o-dx','Presunción diagnóstica',`<input id="o-dx" name="dx">`,true)}
+      <label class="check full"><input type="checkbox" id="o-ay" name="ayuno"> Requiere ayuno de 8 a 12 horas</label>
+      <label class="check full"><input type="checkbox" id="o-ur" name="urgente"> Urgente</label>`
+    :`<div class="full field"><span class="flabel">Medicamentos</span><div data-meds></div><button type="button" class="btn small" data-addmed style="align-self:flex-start">+ Agregar medicamento</button></div>
+      ${tipo==='receta'?field('r-dx','Diagnóstico (opcional)',`<input id="r-dx" name="dx">`,true):''}
+      ${field('d-g',tipo==='receta'?'Indicaciones (opcional)':'Indicaciones generales',`<textarea id="d-g" name="generales" placeholder="${tipo==='receta'?'Ej.: según indicación médica':'Ej.: reposo, collar isabelino, no bañar por 10 días'}">${esc(visita?.trat)}</textarea>`,true)}
+      ${tipo==='indicaciones'?field('d-c','Próximo control',`<input id="d-c" type="date" name="control">`):''}`;
+  openModal(`<h2>${DOCS[tipo]} · ${esc(m.nombre)}</h2><form class="form" novalidate>
+    ${field('d-p','Profesional',`<select id="d-p" name="prof">${opts(PROFS,visita?.prof)}</select>`)}
+    ${field('d-f','Fecha',`<input id="d-f" type="date" name="fecha" value="${TODAY}">`)}
+    <div class="full sendopts">
+      <label class="check"><input type="checkbox" id="d-wa" name="wa" checked> Enviar por WhatsApp a ${esc(fullName(cliente(m.cliente)))} (${esc(cliente(m.cliente)?.telefono)}): PDF + datos del turno</label>
+      <label class="check"><input type="checkbox" id="d-dl" name="dl"> Descargar también el PDF</label>
+    </div>
+    ${body}
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Generar PDF</button></div></form>`,
+  async fd=>{
+    const d={id:uid(),tipo,mascota:mid,fecha:fd.get('fecha')||TODAY,prof:fd.get('prof'),creado:new Date().toISOString()};
+    if(tipo==='orden'){
+      d.estudios=fd.getAll('est');const otro=fd.get('otro').trim();if(otro) d.estudios.push(otro);
+      if(!d.estudios.length) return 'Marcá al menos un estudio o escribí cuál.';
+      Object.assign(d,{dx:fd.get('dx').trim(),ayuno:fd.has('ayuno'),urgente:fd.has('urgente')});
+    } else {
+      d.meds=meds.filter(x=>(x.nombre||'').trim()).map(x=>({...x,nombre:x.nombre.trim()}));
+      d.generales=fd.get('generales').trim();d.dx=(fd.get('dx')||'').trim();d.control=fd.get('control')||'';
+      if(tipo==='receta'&&!d.meds.length) return 'Agregá al menos un medicamento a la receta.';
+      if(tipo==='indicaciones'&&!d.meds.length&&!d.generales) return 'Agregá un medicamento o escribí las indicaciones.';
+      const sinDosis=tipo==='indicaciones'&&d.meds.find(x=>!(x.dosis||'').trim());
+      if(sinDosis) return `Falta la dosis de ${sinDosis.nombre}.`;
+    }
+    if(!fd.has('wa')&&!fd.has('dl')) return 'Elegí enviarlo por WhatsApp, descargarlo, o las dos cosas.';
+    if(fd.has('dl')){const err=await descargarDoc(d);if(err) return err}
+    (db.documentos||(db.documentos=[])).push(d);
+    save();state.tab='documentos';
+    if(fd.has('wa')){const msg=prepararWhatsApp(d,visita);save();setTimeout(()=>compartirModal(msg.id))}
+  },f=>{
+    const box=f.querySelector('[data-meds]');if(!box) return;
+    const draw=()=>{box.innerHTML=meds.map(medRow).join('')};draw();
+    box.addEventListener('input',e=>{const r=e.target.closest('[data-k]');if(r&&e.target.dataset.f) meds[r.dataset.k][e.target.dataset.f]=e.target.value});
+    box.addEventListener('change',e=>{const r=e.target.closest('[data-k]');if(r&&e.target.dataset.f) meds[r.dataset.k][e.target.dataset.f]=e.target.value});
+    box.addEventListener('click',e=>{const k=e.target.dataset.delmed;if(k!==undefined){meds.splice(Number(k),1);if(!meds.length) meds.push(nuevoMed());draw()}});
+    f.querySelector('[data-addmed]').addEventListener('click',()=>{meds.push(nuevoMed());draw();box.querySelector('.medrow:last-child input').focus()});
+  });
+}
+
+function pdfDoc(d){
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({unit:'mm',format:'a4'});
+  const m=mascota(d.mascota),c=cliente(m.cliente);
+  const W=210,L=20,R=190;let y=20;
+  const wrap=(t,w)=>pdf.splitTextToSize(String(t),w);
+  const line=()=>{pdf.setDrawColor(200);pdf.line(L,y,R,y)};
+  const ensure=h=>{if(y+h>262){pdf.addPage();y=20}};
+  // Encabezado
+  pdf.setFont('helvetica','bold');pdf.setFontSize(18);pdf.setTextColor(31,107,79);pdf.text(CLINICA.nombre,L,y);
+  pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.setTextColor(95,107,99);pdf.text(`${CLINICA.dir} · Tel. ${CLINICA.tel}`,L,y+6);
+  pdf.setFontSize(10);pdf.text(fmtCorto(d.fecha),R,y,{align:'right'});
+  y+=12;pdf.setDrawColor(31,107,79);pdf.setLineWidth(.6);pdf.line(L,y,R,y);pdf.setLineWidth(.2);
+  y+=9;pdf.setFont('helvetica','bold');pdf.setFontSize(14);pdf.setTextColor(29,36,32);pdf.text(DOCS[d.tipo].toUpperCase(),L,y);
+  if(d.urgente){pdf.setTextColor(163,53,43);pdf.text('URGENTE',R,y,{align:'right'});pdf.setTextColor(29,36,32)}
+  // Paciente
+  y+=7;pdf.setFillColor(238,241,234);pdf.roundedRect(L,y,R-L,22,2,2,'F');
+  const kv=(k,v,x,yy)=>{pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(95,107,99);pdf.text(k.toUpperCase(),x,yy);pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.setTextColor(29,36,32);pdf.text(String(v||'–'),x,yy+4.5)};
+  kv('Paciente',m.nombre,L+4,y+6);kv('Especie / raza',`${m.especie}${m.raza?' · '+m.raza:''}`,L+44,y+6);kv('Edad',edad(m.nacimiento),L+104,y+6);kv('Peso',m.peso?m.peso+' kg':'',L+140,y+6);
+  kv('Propietario',fullName(c),L+4,y+16);kv('Teléfono',c?.telefono,L+104,y+16);
+  y+=32;
+  const h2=t=>{ensure(14);pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(31,107,79);pdf.text(t,L,y);y+=6;pdf.setTextColor(29,36,32)};
+  const para=t=>{pdf.setFont('helvetica','normal');pdf.setFontSize(10);for(const ln of wrap(t,R-L)){ensure(6);pdf.text(ln,L,y);y+=5}y+=2};
+  if(d.tipo==='receta'){
+    pdf.setFont('times','bolditalic');pdf.setFontSize(20);pdf.text('Rp/',L,y+2);y+=10;
+    d.meds.forEach((x,i)=>{ensure(14);pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.text(`${i+1}. ${x.nombre}`,L+4,y);
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.text([x.presentacion,`Cantidad: ${x.cantidad||1}`].filter(Boolean).join(' · '),L+9,y+5);y+=12});
+    if(d.dx){h2('Diagnóstico');para(d.dx)}
+    if(d.generales){h2('Indicaciones');para(d.generales)}
+  } else if(d.tipo==='orden'){
+    h2('Solicito realizar');
+    d.estudios.forEach(e=>{ensure(7);pdf.setFont('helvetica','normal');pdf.setFontSize(11);pdf.rect(L+1,y-3.5,3.5,3.5);pdf.text(e,L+8,y);y+=7});
+    y+=2;
+    if(d.dx){h2('Presunción diagnóstica');para(d.dx)}
+    if(d.ayuno){h2('Preparación');para('El paciente debe concurrir con ayuno de 8 a 12 horas. Puede tomar agua.')}
+  } else {
+    if(d.meds.length){
+      h2('Cómo dar cada medicamento');
+      const cols=[L,L+46,L+86,L+116,L+138];
+      pdf.setFontSize(8);pdf.setTextColor(95,107,99);pdf.setFont('helvetica','bold');
+      ['MEDICAMENTO','DOSIS','FRECUENCIA','DURANTE','VÍA'].forEach((h,i)=>pdf.text(h,cols[i],y));y+=2;line();y+=5;pdf.setTextColor(29,36,32);
+      d.meds.forEach(x=>{
+        const f=FRECS.find(z=>z[0]===String(x.frec))?.[1]||'';
+        pdf.setFont('helvetica','bold');pdf.setFontSize(10);const nm=wrap(x.nombre,42);pdf.setFont('helvetica','normal');const ds=wrap(x.dosis,36);pdf.setFontSize(9);const nt=x.nota?wrap(x.nota,R-L-4):[];
+        const h=Math.max(nm.length,ds.length)*5+nt.length*4.5+3;ensure(h);
+        pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.text(nm,cols[0],y);
+        pdf.setFont('helvetica','normal');pdf.text(ds,cols[1],y);pdf.text(f,cols[2],y);pdf.text(x.frec==='0'?'–':x.dias?`${x.dias} días`:'Hasta nuevo aviso',cols[3],y);pdf.text(x.via||'',cols[4],y);
+        y+=Math.max(nm.length,ds.length)*5;
+        if(nt.length){pdf.setFont('helvetica','italic');pdf.setFontSize(9);pdf.setTextColor(95,107,99);pdf.text(nt,cols[0]+2,y);y+=nt.length*4.5;pdf.setTextColor(29,36,32)}
+        y+=1;line();y+=5;
+      });
+      // Calendario de tomas para tildar
+      const cal=d.meds.filter(x=>x.frec!=='0'&&Number(x.dias)>0&&Number(x.dias)<=14);
+      if(cal.length){
+        y+=2;h2('Registro de tomas (marcá cada toma)');
+        cal.forEach(x=>{
+          const n=Number(x.dias),porDia=24/Number(x.frec),cw=Math.min(11,(R-L-40)/n);
+          ensure(8+porDia*5);pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.text(x.nombre,L,y);y+=3;
+          pdf.setFont('helvetica','normal');pdf.setFontSize(7);
+          for(let dd=0;dd<n;dd++) pdf.text(`D${dd+1}`,L+40+dd*cw+cw/2,y+2,{align:'center'});
+          y+=3;
+          for(let tt=0;tt<porDia;tt++){pdf.setFontSize(8);pdf.text(`Toma ${tt+1}`,L,y+3.2);for(let dd=0;dd<n;dd++) pdf.rect(L+40+dd*cw+cw/2-1.8,y,3.6,3.6);y+=5}
+          y+=4;
+        });
+        y+=3;
+      }
+    }
+    if(d.generales){h2('Indicaciones generales');para(d.generales)}
+    if(d.control){h2('Próximo control');para(`${fmtDate(d.control)} (${fmtCorto(d.control)}). Pedí el turno al ${CLINICA.tel}.`)}
+  }
+  // Firma
+  const fy=272;pdf.setDrawColor(120);pdf.line(R-70,fy,R,fy);
+  pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.setTextColor(29,36,32);pdf.text(d.prof,R-35,fy+5,{align:'center'});
+  pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.text(`Médico/a veterinario/a · ${MATRICULA[d.prof]||''}`,R-35,fy+9.5,{align:'center'});
+  pdf.setFontSize(7);pdf.setTextColor(150);pdf.text('Documento generado por '+CLINICA.nombre+'.',L,290);
+  return pdf;
+}
+async function descargarDoc(d){
+  if(!window.jspdf) return 'No se pudo cargar el generador de PDF. Revisá la conexión y probá de nuevo.';
+  const dl=window.claude?await window.claude.use?.('downloads'):null;
+  if(!dl&&window.claude) return 'Este navegador no permite descargar archivos desde el prototipo. Abrilo en claude.ai para descargar el PDF.';
+  const m=mascota(d.mascota);
+  const name=`${DOCS[d.tipo]} - ${m.nombre} - ${fmtCorto(d.fecha).replace(/\//g,'-')}.pdf`;
+  const blob=pdfDoc(d).output('blob');
+  if(!dl){ // navegador común (por ejemplo, el server propio): descarga directa
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),10000);return '';
+  }
+  try{await dl.save({filename:name,data:blob})}
+  catch(e){if(e?.code==='declined') return '';return 'No se pudo descargar el PDF. Probá de nuevo en unos segundos.'}
+  return '';
+}
+
+/* Compartir por WhatsApp: menú de compartir del teléfono con el PDF y el texto del turno */
+const docFilename=d=>`${DOCS[d.tipo]} - ${mascota(d.mascota).nombre} - ${fmtCorto(d.fecha).replace(/\//g,'-')}.pdf`;
+function turnoParaDoc(d,visita){
+  if(visita?.turno){const t=db.turnos.find(x=>x.id===visita.turno);if(t) return t}
+  const ts=db.turnos.filter(t=>t.mascota===d.mascota&&t.fecha===d.fecha&&t.estado!=='cancelado').sort((a,b)=>b.hora.localeCompare(a.hora));
+  return ts[0]||null;
+}
+function textoWhatsApp(d,t){
+  const m=mascota(d.mascota),c=cliente(m.cliente);
+  let s=`Hola ${c.nombre}! Te enviamos la documentación de ${m.nombre}.\n`;
+  if(t){
+    s+=`\nTurno: ${fmtDate(t.fecha)} ${t.hora} h\nMotivo: ${t.motivo}\nProfesional: ${t.prof}\n`;
+    const tot=totalDe(t);
+    if(tot) s+=`Total: ${money(tot)}${t.pago==='cobrado'?` (pagado con ${t.medio})`:' (pendiente de pago)'}\n`;
+  }
+  s+=`\nAdjunto: ${DOCS[d.tipo]} (PDF)\n`;
+  if(d.control) s+=`Próximo control: ${fmtDate(d.control)}\n`;
+  s+=`\nCualquier duda, escribinos por acá.\n${CLINICA.nombre}`;
+  return s;
+}
+function prepararWhatsApp(d,visita){
+  const m=mascota(d.mascota),c=cliente(m.cliente),t=turnoParaDoc(d,visita);
+  const msg={id:uid(),mascota:d.mascota,docId:d.id,turnoId:t?.id||'',nombre:fullName(c),telefono:c.telefono,texto:textoWhatsApp(d,t),adjunto:docFilename(d),enviado:''};
+  (db.mensajes||(db.mensajes=[])).push(msg);
+  return msg;
+}
+const hora=iso=>{const d=new Date(iso);return `${pad(d.getHours())}:${pad(d.getMinutes())}`};
+function toast(txt){
+  const el=document.getElementById('toast');el.textContent=txt;el.hidden=false;
+  clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,4000);
+}
+function marcarEnviado(msg){msg.enviado=new Date().toISOString();save()}
+function compartirModal(id){
+  const msg=db.mensajes.find(x=>x.id===id),d=db.documentos.find(x=>x.id===msg.docId);
+  openModal(`<h2>Enviar por WhatsApp</h2><form class="form" novalidate>
+    <p class="hint full">Para ${esc(msg.nombre)} · ${esc(msg.telefono)}${msg.enviado?` · enviado ${esc(fmtCorto(msg.enviado.slice(0,10)))} ${hora(msg.enviado)}`:''}</p>
+    <div class="full wa-chat"><div class="wa-bubble"><div class="wa-file"><span class="wa-pdf">PDF</span><span>${esc(msg.adjunto)}</span></div><div class="wa-text">${esc(msg.texto)}</div></div></div>
+    <button type="button" class="btn primary full big" data-share>Compartir por WhatsApp</button>
+    <div class="full fallback" data-fallback hidden>
+      <p class="note">Este navegador no deja abrir el menú de compartir con el PDF adjunto (en el prototipo pasa siempre; en la app real, desde el celular, funciona). Hacelo en 3 pasos:</p>
+      <ol class="steps">
+        <li><button type="button" class="btn small" data-redoc="${msg.docId}">1. Descargar PDF</button></li>
+        <li><a class="btn small" target="_blank" rel="noopener" href="https://wa.me/${waNumber(msg.telefono)}?text=${encodeURIComponent(msg.texto)}">2. Abrir el chat con el texto listo</a></li>
+        <li><span class="hint">3. En WhatsApp, adjuntá el PDF con el clip y enviá.</span></li>
+      </ol>
+      <button type="button" class="btn small" data-marcar>Marcar como enviado</button>
+    </div>
+    <div class="err full" role="status"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cerrar</button></div></form>`,()=>{},f=>{
+    const err=f.querySelector('.err');
+    f.querySelector('[data-share]').addEventListener('click',async()=>{
+      let file=null;
+      try{if(window.jspdf) file=new File([pdfDoc(d).output('blob')],msg.adjunto,{type:'application/pdf'})}catch(e){}
+      const data={text:msg.texto,files:file?[file]:[]};
+      if(file&&navigator.canShare&&navigator.canShare(data)){
+        try{await navigator.share(data);marcarEnviado(msg);closeModal();render();toast(`Compartido con ${msg.nombre}`);return}
+        catch(e){if(e.name==='AbortError'){err.textContent='No se envió: cerraste el menú de compartir.';return}}
+      }
+      f.querySelector('[data-fallback]').hidden=false;
+    });
+    f.querySelector('[data-marcar]').addEventListener('click',()=>{marcarEnviado(msg);closeModal();render();toast(`Marcado como enviado a ${msg.nombre}`)});
+  });
+}
+
+/* Recordatorios de turnos por WhatsApp */
+function textoRecordatorio(t){
+  const m=mascota(t.mascota),c=cliente(m.cliente);
+  const cuando=t.fecha===TODAY?'hoy':t.fecha===addDays(TODAY,1)?'mañana':'el';
+  return `Hola ${c.nombre}! Te recordamos el turno de ${m.nombre} ${cuando} ${fmtDate(t.fecha).toLowerCase()} a las ${t.hora} h (${t.motivo} con ${t.prof}).\n\nPor favor confirmanos respondiendo este mensaje. Si no podés venir, avisanos así le damos el lugar a otro paciente.\n\n${CLINICA.nombre}`;
+}
+const waRecordatorio=t=>`https://wa.me/${waNumber(cliente(mascota(t.mascota).cliente)?.telefono)}?text=${encodeURIComponent(textoRecordatorio(t))}`;
+const recordable=t=>!t.espontaneo&&(t.estado==='pendiente'||t.estado==='confirmado')&&t.fecha>=TODAY;
+function agendaRecordatorios(){
+  const man=addDays(TODAY,1);
+  const ts=db.turnos.filter(t=>t.fecha===man&&recordable(t)).sort((a,b)=>a.hora.localeCompare(b.hora));
+  if(!ts.length) return '';
+  const falta=ts.filter(t=>!t.recordado).length;
+  return `<h2>Recordatorios para mañana</h2><p class="sub" style="margin-top:-10px">${falta?`${falta} de ${ts.length} turnos sin avisar. Tocá "Enviar" en cada uno: se abre WhatsApp con el mensaje listo.`:'Ya avisaste a todos los turnos de mañana.'}</p>
+    <div class="rows">${ts.map(t=>{const m=mascota(t.mascota),c=cliente(m.cliente);return `<div class="vrow"><div class="grow"><b>${esc(t.hora)} · ${esc(m.nombre)}</b><div class="meta">${esc(fullName(c))} · ${esc(c.telefono)} · ${esc(t.motivo)}</div></div>
+      ${t.recordado?`<span class="chip s-confirmado">Recordado ${hora(t.recordado)}</span>`:''}<a class="btn small ${t.recordado?'':'primary'}" target="_blank" rel="noopener" href="${waRecordatorio(t)}" data-recordar="${t.id}">${t.recordado?'Reenviar':'Enviar'}</a></div>`}).join('')}</div>`;
+}
+
+/* Quién atendió */
+function formAtendido(t){
+  const m=mascota(t.mascota);
+  openModal(`<h2>Marcar como atendido · ${esc(m.nombre)}</h2><form class="form" novalidate>
+    ${field('at-p','¿Quién lo atendió?',`<select id="at-p" name="prof">${opts(PROFS,t.atendidoPor||t.prof)}</select>`,true)}
+    <p class="hint full">El turno estaba asignado a ${esc(t.prof)}. Si lo atendió otra persona, elegila acá: queda registrado en el turno y en la historia clínica.</p>
+    <label class="check full"><input type="checkbox" id="at-v" name="visita" ${(db.visitas||[]).some(v=>v.turno===t.id)?'':'checked'}> Cargar la visita ahora (temperatura, peso, observaciones)</label>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Guardar</button></div></form>`,
+  fd=>{
+    t.estado='atendido';t.atendidoPor=fd.get('prof');save();
+    if(fd.has('visita')) setTimeout(()=>formVisita({mascota:t.mascota,fecha:t.fecha,motivo:t.motivo,prof:t.atendidoPor,turno:t.id}));
+  });
+  document.getElementById('modal').querySelector('[data-close]').addEventListener('click',()=>render());
+}
+
+/* Estudios: los archivos se guardan en el servidor */
+const files={
+  async put(f){
+    const fd=new FormData();fd.append('archivo',f);
+    const r=await api('api/archivos',{method:'POST',body:fd});
+    if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail||`No se pudo subir "${f.name}".`);
+    return (await r.json()).id;
+  }
+};
+const fileUrl=k=>'api/archivos/'+encodeURIComponent(k);
+function hydrateThumbs(root){
+  root.querySelectorAll('img[data-file]').forEach(img=>{
+    img.onerror=()=>img.replaceWith(Object.assign(document.createElement('span'),{className:'fic',textContent:'Archivo no disponible'}));
+    img.src=fileUrl(img.dataset.file);
+  });
+}
+const sizeTxt=n=>n>1048576?(n/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(n/1024))+' KB';
+function estudioCard(e){
+  const a=e.archivos||[];
+  const thumbs=a.length?a.map(f=>`<button class="thumb" data-ver="${f.id}" data-estudio="${e.id}" aria-label="Ver ${esc(f.nombre)}">${f.mime.startsWith('image/')?`<img data-file="${f.id}" alt="">`:`<span class="fic">PDF</span>`}</button>`).join(''):'<span class="thumb ph">Ejemplo sin archivo</span>';
+  return `<article class="filecard"><div class="thumbs">${thumbs}</div>
+    <div><span class="tag">${esc(e.tipo)}</span> <span class="meta">${esc(fmtCorto(e.fecha))}</span></div>
+    <div class="t">${esc(e.titulo)}</div>${e.nota?`<div class="meta">${esc(e.nota)}</div>`:''}</article>`;
+}
+function formEstudio(mid){
+  const m=mascota(mid);
+  openModal(`<h2>Subir estudio · ${esc(m.nombre)}</h2><form class="form" novalidate>
+    ${field('e-t','Tipo',`<select id="e-t" name="tipo">${opts(TIPOS)}</select>`)}
+    ${field('e-f','Fecha',`<input id="e-f" type="date" name="fecha" value="${TODAY}">`)}
+    ${field('e-ti','Descripción',`<input id="e-ti" name="titulo" placeholder="Ej.: Hemograma completo">`,true)}
+    ${field('e-a','Archivos',`<input id="e-a" type="file" name="archivos" accept="image/*,application/pdf" multiple>`,true)}
+    <p class="hint full">Fotos sacadas con el celular, imágenes o PDF del laboratorio. Podés elegir varios a la vez.</p>
+    ${field('e-n','Resultado o comentario',`<textarea id="e-n" name="nota"></textarea>`,true)}
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Guardar estudio</button></div></form>`,
+  async fd=>{
+    const fs=fd.getAll('archivos').filter(f=>f&&f.size);
+    if(!fs.length) return 'Elegí al menos un archivo.';
+    const bad=fs.find(f=>!f.type.startsWith('image/')&&f.type!=='application/pdf');
+    if(bad) return `"${bad.name}" no es una imagen ni un PDF.`;
+    const archivos=[];
+    for(const f of fs){let id;try{id=await files.put(f)}catch(e){return e.message}archivos.push({id,nombre:f.name,mime:f.type,size:f.size})}
+    db.estudios.push({id:uid(),mascota:mid,tipo:fd.get('tipo'),fecha:fd.get('fecha')||TODAY,titulo:fd.get('titulo').trim()||fd.get('tipo'),nota:fd.get('nota').trim(),archivos});
+    save();state.tab='estudios';
+  });
+}
+async function verArchivo(eid,fid){
+  const e=db.estudios.find(x=>x.id===eid),f=e?.archivos.find(x=>x.id===fid);if(!f) return;
+  const img=f.mime.startsWith('image/');
+  openModal(`<h2>${esc(e.titulo)}</h2><form class="form" novalidate>
+    <div class="full viewer">${img?`<img data-file="${f.id}" alt="${esc(f.nombre)}">`:`<iframe src="${fileUrl(f.id)}" title="${esc(f.nombre)}" style="width:100%;height:65vh;border:0"></iframe>`}</div>
+    <p class="hint full">${esc(f.nombre)} · ${sizeTxt(f.size)} · <a href="${fileUrl(f.id)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600">Abrir o descargar</a></p>
+    <div class="mact full"><button type="button" class="btn primary" data-close>Cerrar</button></div></form>`,()=>{});
+  hydrateThumbs(document.getElementById('modal'));
+}
+
+/* Enviar historia clínica */
+function textoHistoria(m,cuales,conEstudios){
+  const vs=visitasDe(m.id),sel=cuales==='ultima'?vs.slice(0,1):vs;
+  let t=`Historia clínica de ${m.nombre}\n${m.especie}${m.raza?', '+m.raza:''}${m.nacimiento?', '+edad(m.nacimiento):''}\n${CLINICA.nombre}\n`;
+  for(const v of sel){
+    t+=`\n${fmtCorto(v.fecha)} · ${v.motivo} · ${v.prof}\n`;
+    const vit=[v.temp&&`Temperatura: ${v.temp} °C`,v.peso&&`Peso: ${v.peso} kg`].filter(Boolean).join(' · ');
+    if(vit) t+=vit+'\n';
+    if(v.obs) t+=`Observaciones: ${v.obs}\n`;
+    if(v.trat) t+=`Tratamiento: ${v.trat}\n`;
+  }
+  const es=estudiosDe(m.id);
+  if(conEstudios&&es.length) t+=`\nEstudios:\n`+es.map(e=>`- ${fmtCorto(e.fecha)} ${e.tipo}: ${e.titulo}${e.nota?' ('+e.nota+')':''}`).join('\n')+'\n';
+  return t.trim();
+}
+function waNumber(tel){let d=String(tel||'').replace(/\D/g,'');if(!d) return '';if(d.startsWith('0')) d=d.slice(1);return d.startsWith('54')?d:'549'+d}
+function formEnviar(mid){
+  const m=mascota(mid),c=cliente(m.cliente);
+  openModal(`<h2>Enviar historia clínica</h2><form class="form" novalidate>
+    <p class="hint full">Para ${esc(fullName(c))} · WhatsApp ${esc(c.telefono)}${c.email?' · '+esc(c.email):''}</p>
+    ${field('s-c','Qué enviar',`<select id="s-c" name="cuales"><option value="todas">Todas las visitas</option><option value="ultima">Solo la última visita</option></select>`)}
+    <label class="check" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="s-e" name="estudios" checked> Incluir lista de estudios</label>
+    ${field('s-p','Vista previa',`<textarea id="s-p" name="texto" rows="10" readonly></textarea>`,true)}
+    <p class="hint full">En la versión real se envía como PDF con el logo de la veterinaria, directo desde la app.</p>
+    <div class="err full" role="status"></div>
+    <div class="mact full" style="flex-wrap:wrap"><button type="button" class="btn" data-close>Cerrar</button><button type="button" class="btn" data-copiar>Copiar texto</button><a class="btn primary" id="s-wa" target="_blank" rel="noopener">Abrir WhatsApp</a></div></form>`,
+  ()=>'',f=>{
+    const upd=()=>{
+      const t=textoHistoria(m,f.cuales.value,f.estudios.checked);
+      f.texto.value=t;
+      const n=waNumber(c.telefono);
+      f.querySelector('#s-wa').href=`https://wa.me/${n}?text=${encodeURIComponent(t)}`;
+    };
+    upd();f.addEventListener('change',upd);
+    f.querySelector('[data-copiar]').addEventListener('click',async()=>{
+      const msg=f.querySelector('.err');
+      try{await navigator.clipboard.writeText(f.texto.value);msg.textContent='Texto copiado. Pegalo en WhatsApp o en un email.'}
+      catch(e){f.texto.focus();f.texto.select();msg.textContent='Seleccioné el texto: copialo con Ctrl+C o mantené apretado en el celular.'}
+    });
+  });
+}
+
+/* Formularios */
+const field=(id,label,input,full)=>`<div class="field ${full?'full':''}"><label for="${id}">${label}</label>${input}</div>`;
+const opts=(arr,val)=>arr.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${v===val?'selected':''}>${esc(l)}</option>`}).join('');
+
+function openModal(html,onSubmit,onReady){
+  const ov=document.getElementById('overlay'),md=document.getElementById('modal');
+  md.innerHTML=html;ov.hidden=false;
+  const f=md.querySelector('form');
+  f.addEventListener('submit',async e=>{e.preventDefault();const err=await onSubmit(new FormData(f));if(err){md.querySelector('.err').textContent=err}else{closeModal();render()}});
+  md.querySelector('[data-close]').addEventListener('click',closeModal);
+  f.addEventListener('change',()=>{
+    const modo=f.querySelector('[name=modo]:checked');
+    if(modo) f.querySelectorAll('[data-modo]').forEach(el=>el.hidden=el.dataset.modo!==modo.value);
+    const nc=f.querySelector('[data-nuevo-cliente]');
+    if(nc) nc.hidden=f.querySelector('[name=cliente]').value!=='__nuevo';
+  });
+  onReady&&onReady(f);
+  const first=md.querySelector('input,select');first&&first.focus();
+}
+function closeModal(){document.getElementById('overlay').hidden=true}
+
+function formTurno(pre={}){
+  const groups=db.clientes.slice().sort((a,b)=>a.apellido.localeCompare(b.apellido)).map(c=>{
+    const ms=db.mascotas.filter(m=>m.cliente===c.id);if(!ms.length) return '';
+    return `<optgroup label="${esc(fullName(c))}">${ms.map(m=>`<option value="${m.id}" ${m.id===pre.mascota?'selected':''}>${esc(m.nombre)} (${esc(m.especie)})</option>`).join('')}</optgroup>`}).join('');
+  const cs=db.clientes.slice().sort((a,b)=>a.apellido.localeCompare(b.apellido)).map(c=>[c.id,`${c.apellido}, ${c.nombre}`]);
+  const ahora=new Date(),hhmm=`${pad(ahora.getHours())}:${pad(Math.floor(ahora.getMinutes()/5)*5)}`;
+  openModal(`<h2>${pre.espontaneo?'Atención sin turno':'Nuevo turno'}</h2><form class="form" novalidate>
+    ${pre.espontaneo?`<p class="hint full" style="margin-top:-6px">Paciente que llegó sin turno. Se registra hoy a las ${hhmm} h y aparece en la agenda del día.</p>`:''}
+    <div class="seg full" role="radiogroup" aria-label="Tipo de paciente">
+      <label><input type="radio" name="modo" value="existente" checked> Ya es paciente</label>
+      <label><input type="radio" name="modo" value="nuevo"> Primera vez</label>
+    </div>
+    <div class="full" data-modo="existente">${field('t-m','Mascota',`<select id="t-m" name="mascota" required><option value="">Elegí una mascota</option>${groups}</select>`)}</div>
+    <div class="full form sub" data-modo="nuevo" hidden>
+      ${field('t-c','Dueño',`<select id="t-c" name="cliente"><option value="__nuevo">+ Cliente nuevo</option>${opts(cs)}</select>`,true)}
+      <div class="full form sub" data-nuevo-cliente>
+        ${field('t-cn','Nombre del dueño',`<input id="t-cn" name="cnombre">`)}
+        ${field('t-ca','Apellido',`<input id="t-ca" name="capellido">`)}
+        ${field('t-ct','Teléfono',`<input id="t-ct" name="ctelefono" type="tel">`,true)}
+      </div>
+      ${field('t-mn','Nombre de la mascota',`<input id="t-mn" name="mnombre">`)}
+      ${field('t-me','Especie',`<select id="t-me" name="mespecie">${opts(['Perro','Gato','Otro'])}</select>`)}
+      <p class="hint full">El resto de la ficha (raza, edad, peso) se completa cuando venga a la consulta.</p>
+    </div>
+    ${pre.espontaneo?`<input type="hidden" name="fecha" value="${TODAY}"><input type="hidden" name="hora" value="${hhmm}">`:`${field('t-f','Fecha',`<input id="t-f" type="date" name="fecha" value="${pre.fecha||state.day}" required>`)}
+    ${field('t-h','Hora',`<input id="t-h" type="time" name="hora" value="10:00" step="900" required>`)}`}
+    ${field('t-d','Duración',`<select id="t-d" name="dur">${opts([['15','15 min'],['30','30 min'],['45','45 min'],['60','1 hora'],['90','1 h 30 min']],'30')}</select>`)}
+    ${field('t-mo','Motivo',`<select id="t-mo" name="motivo">${opts(MOTIVOS,pre.motivo)}</select>`)}
+    ${field('t-p',pre.espontaneo?'Lo atiende':'Profesional',`<select id="t-p" name="prof">${opts(PROFS)}</select>`,true)}
+    ${field('t-s','Qué se cobra',`<select id="t-s" name="servicio"><option value="">Nada por ahora</option>${preciosOptions(defaultPrecio({motivo:pre.motivo||MOTIVOS[0],notas:pre.notas}))}</select>`,true)}
+    <p class="hint full" style="margin-top:-6px">Si en la consulta surge algo más, se agrega después desde "Cobro" en el turno.</p>
+    ${field('t-n','Notas',`<textarea id="t-n" name="notas" placeholder="Ej.: viene en ayunas">${esc(pre.notas)}</textarea>`,true)}
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">${pre.espontaneo?'Registrar atención':'Guardar turno'}</button></div></form>`,
+  fd=>{
+    const t=Object.fromEntries(fd);
+    const nuevo=t.modo==='nuevo';
+    if(nuevo){
+      if(t.cliente==='__nuevo'&&(!t.cnombre.trim()||!t.ctelefono.trim())) return 'Completá el nombre y el teléfono del dueño para poder avisarle del turno.';
+      if(!t.mnombre.trim()) return 'Completá el nombre de la mascota.';
+    } else if(!t.mascota) return 'Elegí la mascota del turno, o marcá "Primera vez" si es un paciente nuevo.';
+    if(!t.fecha||!t.hora) return 'Completá la fecha y la hora.';
+    const a=toMin(t.hora),b=a+Number(t.dur);
+    const choque=db.turnos.find(x=>x.fecha===t.fecha&&x.prof===t.prof&&x.estado!=='cancelado'&&toMin(x.hora)<b&&a<toMin(x.hora)+Number(x.dur));
+    if(choque&&!pre.espontaneo) return `${t.prof} ya tiene un turno a las ${choque.hora} con ${mascota(choque.mascota)?.nombre}. Elegí otro horario.`;
+    if(nuevo){
+      let cid=t.cliente;
+      if(cid==='__nuevo'){cid=uid();db.clientes.push({id:cid,nombre:t.cnombre.trim(),apellido:t.capellido.trim(),telefono:t.ctelefono.trim(),dni:'',email:'',direccion:'',notas:''})}
+      t.mascota=uid();
+      db.mascotas.push({id:t.mascota,cliente:cid,nombre:t.mnombre.trim(),especie:t.mespecie,raza:'',sexo:'Macho',nacimiento:'',peso:'',castrado:false,notas:'',incompleta:true});
+    }
+    const {fecha,hora,dur,motivo,prof,notas,mascota:mid}=t;
+    const tid=uid();
+    db.turnos.push({id:tid,fecha,hora,dur:Number(dur),motivo,prof,notas,mascota:mid,estado:pre.espontaneo?'confirmado':'pendiente',espontaneo:!!pre.espontaneo,primeraVez:nuevo,items:t.servicio?[itemDe(precio(t.servicio))]:[],pago:'pendiente'});
+    const vac=pre.vacuna&&db.vacunas.find(x=>x.id===pre.vacuna);if(vac) vac.turnoProx=tid;
+    save();
+    state.detail=null;state.section='agenda';state.day=t.fecha;history.replaceState(null,'','#agenda');
+  },f=>{
+    let tocado=false;const s=f.querySelector('#t-s');
+    s.addEventListener('change',()=>tocado=true);
+    f.motivo.addEventListener('change',()=>{if(!tocado) s.value=defaultPrecio({motivo:f.motivo.value,notas:f.notas.value})});
+  });
+}
+
+function formCliente(c){
+  const v=c||{};
+  openModal(`<h2>${c?'Editar cliente':'Nuevo cliente'}</h2><form class="form" novalidate>
+    ${field('c-n','Nombre',`<input id="c-n" name="nombre" value="${esc(v.nombre)}" required>`)}
+    ${field('c-a','Apellido',`<input id="c-a" name="apellido" value="${esc(v.apellido)}" required>`)}
+    ${field('c-t','Teléfono',`<input id="c-t" name="telefono" type="tel" value="${esc(v.telefono)}" required>`)}
+    ${field('c-d','DNI',`<input id="c-d" name="dni" value="${esc(v.dni)}">`)}
+    ${field('c-e','Email',`<input id="c-e" name="email" type="email" value="${esc(v.email)}">`)}
+    ${field('c-di','Dirección',`<input id="c-di" name="direccion" value="${esc(v.direccion)}">`)}
+    ${field('c-no','Notas',`<textarea id="c-no" name="notas">${esc(v.notas)}</textarea>`,true)}
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Guardar</button></div></form>`,
+  fd=>{
+    const d=Object.fromEntries(fd);
+    if(!d.nombre.trim()||!d.apellido.trim()) return 'Completá el nombre y el apellido.';
+    if(!d.telefono.trim()) return 'El teléfono es obligatorio para poder avisar de los turnos.';
+    if(c) Object.assign(c,d); else {const id=uid();db.clientes.push({id,...d});state.detail={type:'cliente',id}}
+    save();
+  });
+}
+
+function formMascota(m,clienteId){
+  const v=m||{cliente:clienteId,especie:'Perro',sexo:'Macho'};
+  const cs=db.clientes.slice().sort((a,b)=>a.apellido.localeCompare(b.apellido)).map(c=>[c.id,`${c.apellido}, ${c.nombre}`]);
+  openModal(`<h2>${m?'Editar mascota':'Nueva mascota'}</h2><form class="form" novalidate>
+    ${field('m-c','Dueño',`<select id="m-c" name="cliente"><option value="">Elegí un cliente</option>${opts(cs,v.cliente)}</select>`,true)}
+    ${field('m-n','Nombre',`<input id="m-n" name="nombre" value="${esc(v.nombre)}" required>`)}
+    ${field('m-e','Especie',`<select id="m-e" name="especie">${opts(['Perro','Gato','Otro'],v.especie)}</select>`)}
+    ${field('m-r','Raza',`<input id="m-r" name="raza" value="${esc(v.raza)}" placeholder="Ej.: Mestizo">`)}
+    ${field('m-s','Sexo',`<select id="m-s" name="sexo">${opts(['Macho','Hembra'],v.sexo)}</select>`)}
+    ${field('m-f','Fecha de nacimiento',`<input id="m-f" type="date" name="nacimiento" value="${esc(v.nacimiento)}">`)}
+    ${field('m-p','Peso (kg)',`<input id="m-p" type="number" step="0.1" min="0" name="peso" value="${esc(v.peso)}">`)}
+    <label class="check full"><input type="checkbox" id="m-ca" name="castrado" ${v.castrado?'checked':''}> Castrado/a</label>
+    ${field('m-no','Alergias y notas',`<textarea id="m-no" name="notas">${esc(v.notas)}</textarea>`,true)}
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-close>Cancelar</button><button class="btn primary">Guardar</button></div></form>`,
+  fd=>{
+    const d=Object.fromEntries(fd);d.castrado=fd.has('castrado');
+    if(!d.cliente) return 'Elegí el dueño de la mascota.';
+    if(!d.nombre.trim()) return 'Completá el nombre de la mascota.';
+    if(m) Object.assign(m,d,{incompleta:false}); else {const id=uid();db.mascotas.push({id,...d});state.detail={type:'mascota',id}}
+    save();
+  });
+}
+
+/* Eventos */
+document.addEventListener('click',e=>{
+  const el=e.target.closest('button,a');if(!el) return;
+  const ds=el.dataset;
+  if(ds.day){state.day=ds.day;render()}
+  else if(ds.openC){state.detail={type:'cliente',id:ds.openC};render();scrollTo(0,0)}
+  else if(ds.openM){state.detail={type:'mascota',id:ds.openM};state.tab=ds.tabTo||'historia';render();scrollTo(0,0)}
+  else if(ds.tab){state.tab=ds.tab;render()}
+  else if(ds.visitaTurno){const t=db.turnos.find(x=>x.id===ds.visitaTurno);formVisita({mascota:t.mascota,fecha:t.fecha,motivo:t.motivo,prof:t.atendidoPor||t.prof,turno:t.id})}
+  else if(ds.new==='visita') formVisita({mascota:ds.mascota});
+  else if(ds.cobro) formCobro(ds.cobro);
+  else if(ds.recordar){const t=db.turnos.find(x=>x.id===ds.recordar);t.recordado=new Date().toISOString();if(t.estado==='pendiente') t.estado='confirmado';save();setTimeout(render,300)}
+  else if(ds.new==='espontaneo') formTurno({espontaneo:true});
+  else if(ds.doc){const v=ds.visita&&db.visitas.find(x=>x.id===ds.visita);formDoc(ds.doc,v?v.mascota:ds.mascota,v)}
+  else if(ds.verMsg) compartirModal(ds.verMsg);
+  else if(ds.enviarDoc){const d=db.documentos.find(x=>x.id===ds.enviarDoc);let msg=(db.mensajes||[]).filter(x=>x.docId===d.id).pop();if(!msg){msg=prepararWhatsApp(d);save()}compartirModal(msg.id)}
+  else if(ds.redoc){const d=db.documentos.find(x=>x.id===ds.redoc);descargarDoc(d).then(err=>{if(err){el.textContent='No se pudo descargar';el.title=err}})}
+  else if(ds.editP) formPrecio(precio(ds.editP));
+  else if(ds.new==='precio') formPrecio();
+  else if('aumento' in ds) formAumento();
+  else if(ds.new==='vacuna') formVacuna(ds.mascota);
+  else if(ds.agendarVac) agendarVacuna(ds.agendarVac);
+  else if(ds.new==='estudio') formEstudio(ds.mascota);
+  else if(ds.enviar) formEnviar(ds.enviar);
+  else if(ds.ver) verArchivo(ds.estudio,ds.ver);
+  else if('back' in ds){state.detail=null;render()}
+  else if(ds.editC) formCliente(cliente(ds.editC));
+  else if(ds.editM) formMascota(mascota(ds.editM));
+  else if(ds.new==='turno') formTurno({mascota:ds.mascota});
+  else if(ds.new==='cliente') formCliente();
+  else if(ds.new==='mascota') formMascota(null,ds.cliente||(state.detail?.type==='cliente'?state.detail.id:''));
+});
+document.addEventListener('change',e=>{
+  const id=e.target.dataset.estado;if(!id) return;
+  const t=db.turnos.find(x=>x.id===id);
+  if(e.target.value==='atendido'&&t.estado!=='atendido') return formAtendido(t);
+  t.estado=e.target.value;save();render();
+});
+document.addEventListener('input',e=>{if(e.target.id==='q'){state.q=e.target.value;render()}});
+document.getElementById('fab').addEventListener('click',()=>formTurno({mascota:state.detail?.type==='mascota'?state.detail.id:undefined}));
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay') closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal()});
+function formCuenta(){
+  const otras=sesion.veterinarias.filter(v=>v.id!==sesion.veterinaria.id);
+  openModal(`<h2>Mi cuenta</h2><form class="form" novalidate>
+    <p class="full">${esc(sesion.usuario.nombre)} · ${esc(ROLES[sesion.rol])} en <b>${esc(CLINICA.nombre)}</b><br><span class="hint">Usuario: ${esc(sesion.usuario.usuario)}</span></p>
+    ${otras.length?`<div class="full">${otras.map(v=>`<button type="button" class="btn small" data-elegir-vet="${v.id}">Pasar a ${esc(v.nombre)}</button>`).join(' ')}</div>`:''}
+    <p class="full"><b>Cambiar contraseña</b></p>
+    ${field('cu-a','Contraseña actual','<input id="cu-a" type="password" name="actual" autocomplete="current-password">')}
+    ${field('cu-n','Nueva (mínimo 8 caracteres)','<input id="cu-n" type="password" name="nueva" autocomplete="new-password">')}
+    <div class="err full" role="alert"></div>
+    <div class="mact full"><button type="button" class="btn" data-salir>Salir</button><button type="button" class="btn" data-close>Cerrar</button><button class="btn primary">Cambiar contraseña</button></div></form>`,
+  async fd=>{
+    if(String(fd.get('nueva')).length<8) return 'La nueva contraseña tiene que tener al menos 8 caracteres.';
+    const r=await api('api/cambiar-clave',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actual:fd.get('actual'),nueva:fd.get('nueva')})});
+    if(!r.ok) return (await r.json().catch(()=>({}))).detail||'No se pudo cambiar la contraseña.';
+    toast('Contraseña cambiada');
+  },f=>{
+    f.querySelector('[data-salir]').addEventListener('click',async()=>{await push();await api('api/logout',{method:'POST'});location.href='login.html'});
+    f.querySelectorAll('[data-elegir-vet]').forEach(b=>b.addEventListener('click',async()=>{
+      await push();
+      await api('api/elegir-veterinaria',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({veterinaria_id:Number(b.dataset.elegirVet)})});
+      location.reload();
+    }));
+  });
+}
+document.addEventListener('click',e=>{if(e.target.closest('#cuenta,[data-cuenta]')) formCuenta()});
+function route(){
+  const h=location.hash.slice(1);
+  closeModal();
+  state.section=SECTIONS.some(([k])=>k===h)?h:'agenda';state.detail=null;state.q='';render();
+}
+(async()=>{
+  if(!await iniciar()) return;
+  addEventListener('hashchange',route);
+  route();
+  setInterval(refresh,10000);
+  addEventListener('focus',refresh);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden) refresh()});
+})();
+</script>
+
+</html>

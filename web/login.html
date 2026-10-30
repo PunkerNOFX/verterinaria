@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar · Gestión veterinaria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Figtree:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#f5f6f2; --surface:#ffffff; --surface-2:#eef1ea; --line:#dde2d6;
+  --fg:#1d2420; --muted:#5f6b63; --accent:#1f6b4f; --accent-fg:#ffffff; --bad:#a3352b;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121614; --surface:#1a201d; --surface-2:#222a26; --line:#2f3833;
+  --fg:#e7ece8; --muted:#9aa69f; --accent:#5cc196; --accent-fg:#0d1a14; --bad:#f08f84;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1a201d; --surface-2:#222a26; --line:#2f3833;
+  --fg:#e7ece8; --muted:#9aa69f; --accent:#5cc196; --accent-fg:#0d1a14; --bad:#f08f84;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;display:grid;place-items:center;padding:16px}
+.card{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 24px}
+h1{font-family:var(--display);font-size:26px;margin:0 0 4px}
+p{margin:0 0 20px;color:var(--muted)}
+label{display:block;font-weight:600;font-size:13px;margin:14px 0 6px}
+input{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+button{width:100%;margin-top:20px;font:inherit;font-weight:600;border-radius:8px;padding:11px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg)}
+button.alt{background:var(--surface);color:var(--fg);border-color:var(--line);margin-top:10px}
+button[disabled]{opacity:.6;cursor:wait}
+.err{color:var(--bad);min-height:1.4em;margin-top:12px;font-size:14px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main class="card">
+  <section id="entrar">
+    <h1>Gestión veterinaria</h1>
+    <p>Entrá con tu usuario.</p>
+    <form id="form" novalidate>
+      <label for="usuario">Usuario</label>
+      <input id="usuario" name="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      <label for="clave">Contraseña</label>
+      <input id="clave" name="clave" type="password" autocomplete="current-password" required>
+      <button id="btn">Entrar</button>
+      <div class="err" id="err" role="alert"></div>
+    </form>
+  </section>
+  <section id="elegir" hidden>
+    <h1>¿En qué veterinaria?</h1>
+    <p>Tu usuario tiene acceso a más de una.</p>
+    <div id="vets"></div>
+    <div class="err" id="err2" role="alert"></div>
+  </section>
+</main>
+<script>
+const H={'X-Vet':'1','Content-Type':'application/json'};
+const $=id=>document.getElementById(id);
+async function seguir(){
+  const r=await fetch('api/sesion',{cache:'no-store'});
+  if(!r.ok) return false;
+  const s=await r.json();
+  if(s.veterinaria){location.replace('./');return true}
+  $('entrar').hidden=true;$('elegir').hidden=false;
+  if(!s.veterinarias.length){$('err2').textContent='Tu usuario todavía no tiene ninguna veterinaria asignada. Pedile acceso al administrador.';return true}
+  $('vets').replaceChildren(...s.veterinarias.map(v=>{
+    const b=document.createElement('button');b.type='button';b.className='alt';b.textContent=v.nombre;
+    b.onclick=async()=>{
+      const r=await fetch('api/elegir-veterinaria',{method:'POST',headers:H,body:JSON.stringify({veterinaria_id:v.id})});
+      if(r.ok) location.replace('./');else $('err2').textContent='No se pudo elegir esa veterinaria.';
+    };
+    return b;
+  }));
+  return true;
+}
+$('form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const usuario=$('usuario').value.trim(),clave=$('clave').value;
+  if(!usuario||!clave){$('err').textContent='Completá usuario y contraseña.';return}
+  $('btn').disabled=true;$('err').textContent='';
+  try{
+    const r=await fetch('api/login',{method:'POST',headers:H,body:JSON.stringify({usuario,clave})});
+    if(r.ok) await seguir();
+    else $('err').textContent=(await r.json().catch(()=>({}))).detail||'No se pudo entrar.';
+  }catch(e){$('err').textContent='No hay conexión con el servidor.'}
+  $('btn').disabled=false;
+});
+seguir().catch(()=>{});
+</script>
+</body>
+</html>
