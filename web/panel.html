@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel · Gestión veterinaria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f5f6f2; --surface:#ffffff; --surface-2:#eef1ea; --line:#dde2d6;
+  --fg:#1d2420; --muted:#5f6b63; --accent:#1f6b4f; --accent-fg:#ffffff; --accent-soft:#dcefe5;
+  --bad:#a3352b; --bad-bg:#f8e0dc; --warn:#8a5a00; --warn-bg:#fbefd2;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121614; --surface:#1a201d; --surface-2:#222a26; --line:#2f3833;
+  --fg:#e7ece8; --muted:#9aa69f; --accent:#5cc196; --accent-fg:#0d1a14; --accent-soft:#1f3a2e;
+  --bad:#f08f84; --bad-bg:#3d2220; --warn:#e9bd62; --warn-bg:#3a2f17;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1a201d; --surface-2:#222a26; --line:#2f3833;
+  --fg:#e7ece8; --muted:#9aa69f; --accent:#5cc196; --accent-fg:#0d1a14; --accent-soft:#1f3a2e;
+  --bad:#f08f84; --bad-bg:#3d2220; --warn:#e9bd62; --warn-bg:#3a2f17;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
+h1{font-family:var(--display);font-size:28px;margin:0}
+h2{font-family:var(--display);font-size:20px;margin:0 0 12px}
+.sub{color:var(--muted);font-size:14px}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto}
+.tabs button{border:none;background:none;font:inherit;font-weight:600;color:var(--muted);padding:10px 12px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit;font-weight:600;text-decoration:none}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn.danger{color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+label{display:block;font-weight:600;font-size:13px;margin-bottom:4px}
+input,select{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+input[type=checkbox]{width:auto}
+.check{display:flex;align-items:center;gap:8px;font-weight:500;font-size:14px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.list{display:flex;flex-direction:column}
+.item{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:none}
+.who b{display:block}
+.who span{color:var(--muted);font-size:13px}
+.tag{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--muted);margin:2px 4px 2px 0}
+.tag.ok{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-bg);color:var(--bad)}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag button{border:none;background:none;color:inherit;cursor:pointer;padding:0 0 0 4px;font:inherit}
+.row-ctrl{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.row-ctrl select{width:auto}
+.err{color:var(--bad);font-size:14px;min-height:1.2em;margin-top:8px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;z-index:50}
+dialog{border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--surface);color:var(--fg);width:min(440px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+dialog .grid{grid-template-columns:1fr}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Panel</h1><div class="sub" id="quien"></div></div>
+    <div class="row-ctrl"><a class="btn" id="volver" href="./" hidden>Volver a la app</a><button class="btn" id="salir">Salir</button></div>
+  </header>
+  <nav class="tabs" id="tabs"></nav>
+  <main id="vista"></main>
+</div>
+<dialog id="dlg"><form method="dialog" id="dlg-form"></form></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+const ROLES={admin:'Administración',veterinario:'Veterinario/a',recepcion:'Recepción'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+let sesion,tab,equipo=[],resumen=null;
+
+async function api(url,metodo='GET',cuerpo){
+  const r=await fetch(url,{method:metodo,cache:'no-store',headers:{'X-Vet':'1',...(cuerpo?{'Content-Type':'application/json'}:{})},body:cuerpo?JSON.stringify(cuerpo):undefined});
+  if(r.status===401){location.href='login.html';throw new Error('sin sesión')}
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(typeof d.detail==='string'?d.detail:'Revisá los datos: falta algo o es muy corto (la contraseña va con 8 caracteres o más).');
+  return d;
+}
+function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(e._t);e._t=setTimeout(()=>e.hidden=true,2600)}
+const opts=(o,sel)=>Object.entries(o).map(([v,l])=>`<option value="${v}" ${v===sel?'selected':''}>${esc(l)}</option>`).join('');
+
+// Formulario en ventana: campos [{n,l,tipo,valor,opciones}], devuelve los valores o null.
+function pedir(titulo,campos,boton='Guardar',accion){
+  const f=$('dlg-form');
+  f.innerHTML=`<h2>${esc(titulo)}</h2><div class="grid">${campos.map(c=>c.tipo==='check'
+      ?`<label class="check"><input type="checkbox" name="${c.n}" ${c.valor?'checked':''}> ${esc(c.l)}</label>`
+      :c.tipo==='select'?`<div><label for="d-${c.n}">${esc(c.l)}</label><select id="d-${c.n}" name="${c.n}">${c.opciones}</select></div>`
+      :`<div><label for="d-${c.n}">${esc(c.l)}</label><input id="d-${c.n}" name="${c.n}" type="${c.tipo||'text'}" value="${esc(c.valor||'')}" ${c.tipo==='password'?'autocomplete="new-password"':''}></div>`).join('')}</div>
+    <div class="err" id="dlg-err" role="alert"></div>
+    <div class="acts"><button type="button" class="btn" onclick="this.closest('dialog').close()">Cancelar</button><button class="btn primary" value="ok">${esc(boton)}</button></div>`;
+  $('dlg').showModal();
+  f.onsubmit=async e=>{
+    e.preventDefault();
+    const fd=new FormData(f),v={};
+    for(const c of campos) v[c.n]=c.tipo==='check'?fd.has(c.n):String(fd.get(c.n)||'').trim();
+    try{await accion(v);$('dlg').close();await cargar()}catch(err){$('dlg-err').textContent=err.message}
+  };
+}
+async function hacer(fn,ok){try{await fn();if(ok) toast(ok);await cargar()}catch(e){toast(e.message)}}
+
+// ---------- Mi veterinaria ----------
+function vistaMia(){
+  const v=sesion.veterinaria;
+  return `<section class="card"><h2>Datos de ${esc(v.nombre)}</h2>
+    <p class="sub">Salen en las recetas, documentos y mensajes de WhatsApp.</p>
+    <form id="f-vet" class="grid">
+      <div><label for="v-n">Nombre</label><input id="v-n" name="nombre" value="${esc(v.nombre)}"></div>
+      <div><label for="v-d">Dirección</label><input id="v-d" name="direccion" value="${esc(v.direccion)}"></div>
+      <div><label for="v-t">Teléfono</label><input id="v-t" name="telefono" value="${esc(v.telefono)}"></div>
+      <div><label for="v-a">Alias para transferencias</label><input id="v-a" name="alias_pago" value="${esc(v.alias_pago)}"></div>
+    </form>
+    <div class="acts"><button class="btn primary" id="g-vet">Guardar datos</button></div></section>
+  <section class="card"><div class="row-ctrl" style="justify-content:space-between"><h2 style="margin:0">Personas que usan la app</h2><button class="btn primary" id="n-miembro">+ Agregar persona</button></div>
+    <p class="sub">"Atiende" hace que aparezca en la lista de profesionales de los turnos.</p>
+    <div class="list">${equipo.map(m=>`<div class="item">
+      <div class="who"><b>${esc(m.nombre)}${m.activo?'':' <span class="tag bad">Bloqueado</span>'}</b><span>Usuario: ${esc(m.usuario)}${m.compartido?' · trabaja también en otra veterinaria':''}</span></div>
+      <div class="row-ctrl">
+        <select data-rol="${m.id}" aria-label="Rol de ${esc(m.nombre)}">${opts(ROLES,m.rol)}</select>
+        <label class="check"><input type="checkbox" data-atiende="${m.id}" ${m.atiende?'checked':''}> Atiende</label>
+        <button class="btn small" data-clave="${m.id}">Contraseña</button>
+        <button class="btn small" data-activo="${m.id}">${m.activo?'Bloquear':'Desbloquear'}</button>
+        <button class="btn small danger" data-quitar="${m.id}">Quitar</button>
+      </div></div>`).join('')}</div></section>`;
+}
+function eventosMia(){
+  $('g-vet').onclick=()=>hacer(async()=>{
+    const d=Object.fromEntries(new FormData($('f-vet')));
+    if(!d.nombre.trim()) throw new Error('El nombre no puede quedar vacío');
+    await api('api/veterinaria','PATCH',d);
+  },'Datos guardados');
+  $('n-miembro').onclick=()=>pedir('Agregar persona',[
+    {n:'nombre',l:'Nombre como aparece en los turnos (ej.: Dra. Paula Ríos)'},
+    {n:'usuario',l:'Usuario para entrar (sin espacios)'},
+    {n:'clave',l:'Contraseña inicial (mínimo 8)',tipo:'password'},
+    {n:'rol',l:'Rol',tipo:'select',opciones:opts(ROLES,'recepcion')},
+    {n:'atiende',l:'Atiende pacientes',tipo:'check'}],'Agregar',v=>api('api/equipo','POST',v));
+  const m=id=>equipo.find(x=>x.id===Number(id));
+  document.querySelectorAll('[data-rol]').forEach(s=>s.onchange=()=>hacer(()=>api('api/equipo/'+s.dataset.rol,'PATCH',{rol:s.value}),'Rol cambiado'));
+  document.querySelectorAll('[data-atiende]').forEach(c=>c.onchange=()=>hacer(()=>api('api/equipo/'+c.dataset.atiende,'PATCH',{atiende:c.checked}),'Guardado'));
+  document.querySelectorAll('[data-clave]').forEach(b=>b.onclick=()=>pedir('Nueva contraseña para '+m(b.dataset.clave).nombre,
+    [{n:'clave',l:'Contraseña nueva (mínimo 8)',tipo:'password'}],'Cambiar',v=>api('api/equipo/'+b.dataset.clave,'PATCH',v)));
+  document.querySelectorAll('[data-activo]').forEach(b=>b.onclick=()=>hacer(()=>api('api/equipo/'+b.dataset.activo,'PATCH',{activo:!m(b.dataset.activo).activo}),'Listo'));
+  document.querySelectorAll('[data-quitar]').forEach(b=>b.onclick=()=>pedir(`¿Quitar a ${m(b.dataset.quitar).nombre} de esta veterinaria?`,[],'Quitar',
+    ()=>api('api/equipo/'+b.dataset.quitar,'DELETE')));
+}
+
+// ---------- Panel general ----------
+function vistaGeneral(){
+  const vets=resumen.veterinarias,nom=Object.fromEntries(vets.map(v=>[v.id,v.nombre]));
+  return `<section class="card"><div class="row-ctrl" style="justify-content:space-between"><h2 style="margin:0">Veterinarias (${vets.length})</h2><button class="btn primary" id="n-vet">+ Nueva veterinaria</button></div>
+    <div class="list">${vets.map(v=>`<div class="item">
+      <div class="who"><b>${esc(v.nombre)} ${v.activa?'':'<span class="tag bad">Desactivada</span>'}</b><span>Nº ${v.id} · ${v.usuarios} ${v.usuarios===1?'usuario':'usuarios'}${v.telefono?' · '+esc(v.telefono):''}</span></div>
+      <div class="row-ctrl">
+        <button class="btn small primary" data-entrar="${v.id}">Entrar</button>
+        <button class="btn small" data-editar-vet="${v.id}">Editar</button>
+        <button class="btn small ${v.activa?'danger':''}" data-activa="${v.id}">${v.activa?'Desactivar':'Activar'}</button>
+      </div></div>`).join('')}</div></section>
+  <section class="card"><div class="row-ctrl" style="justify-content:space-between"><h2 style="margin:0">Usuarios (${resumen.usuarios.length})</h2><button class="btn primary" id="n-usu">+ Nuevo usuario</button></div>
+    <div class="list">${resumen.usuarios.map(u=>`<div class="item">
+      <div class="who"><b>${esc(u.nombre)} ${u.superadmin?'<span class="tag warn">Administrador general</span>':''}${u.activo?'':'<span class="tag bad">Bloqueado</span>'}</b><span>Usuario: ${esc(u.usuario)}</span>
+        <div>${u.membresias.map(m=>`<span class="tag ok">${esc(nom[m.veterinaria_id])} · ${ROLES[m.rol]}${m.atiende?' · atiende':''}<button data-sacar="${u.id}:${m.veterinaria_id}" aria-label="Sacar de ${esc(nom[m.veterinaria_id])}">✕</button></span>`).join('')||'<span class="tag">Sin veterinaria</span>'}</div></div>
+      <div class="row-ctrl">
+        <button class="btn small" data-asignar="${u.id}">Dar acceso</button>
+        <button class="btn small" data-editar-usu="${u.id}">Editar</button>
+        ${u.id===resumen.yo?'':`<button class="btn small ${u.activo?'danger':''}" data-bloq="${u.id}">${u.activo?'Bloquear':'Desbloquear'}</button>`}
+      </div></div>`).join('')}</div></section>`;
+}
+function eventosGeneral(){
+  const vets=resumen.veterinarias,v=id=>vets.find(x=>x.id===Number(id)),u=id=>resumen.usuarios.find(x=>x.id===Number(id));
+  const vetOpts=sel=>vets.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${esc(x.nombre)}</option>`).join('');
+  const camposVet=x=>[{n:'nombre',l:'Nombre',valor:x?.nombre},{n:'direccion',l:'Dirección',valor:x?.direccion},
+    {n:'telefono',l:'Teléfono',valor:x?.telefono},{n:'alias_pago',l:'Alias para transferencias',valor:x?.alias_pago}];
+  $('n-vet').onclick=()=>pedir('Nueva veterinaria',camposVet(),'Crear',d=>{if(!d.nombre) throw new Error('Poné el nombre');return api('api/super/veterinarias','POST',d)});
+  document.querySelectorAll('[data-editar-vet]').forEach(b=>b.onclick=()=>pedir('Editar '+v(b.dataset.editarVet).nombre,camposVet(v(b.dataset.editarVet)),'Guardar',
+    d=>{if(!d.nombre) throw new Error('El nombre no puede quedar vacío');return api('api/super/veterinarias/'+b.dataset.editarVet,'PATCH',d)}));
+  document.querySelectorAll('[data-activa]').forEach(b=>b.onclick=()=>{const x=v(b.dataset.activa);
+    if(x.activa) pedir(`¿Desactivar ${x.nombre}?`,[],'Desactivar',()=>api('api/super/veterinarias/'+x.id,'PATCH',{activa:false}));
+    else hacer(()=>api('api/super/veterinarias/'+x.id,'PATCH',{activa:true}),'Veterinaria activada')});
+  document.querySelectorAll('[data-entrar]').forEach(b=>b.onclick=()=>hacer(async()=>{await api('api/elegir-veterinaria','POST',{veterinaria_id:Number(b.dataset.entrar)});location.href='./'}));
+  $('n-usu').onclick=()=>pedir('Nuevo usuario',[
+    {n:'nombre',l:'Nombre como aparece en los turnos'},{n:'usuario',l:'Usuario para entrar (sin espacios)'},
+    {n:'clave',l:'Contraseña inicial (mínimo 8)',tipo:'password'},
+    {n:'vet',l:'Veterinaria',tipo:'select',opciones:'<option value="">Ninguna por ahora</option>'+vetOpts()},
+    {n:'rol',l:'Rol en esa veterinaria',tipo:'select',opciones:opts(ROLES,'admin')},
+    {n:'atiende',l:'Atiende pacientes',tipo:'check'},{n:'superadmin',l:'Administrador general (controla todo)',tipo:'check'}],'Crear',async d=>{
+      const {id}=await api('api/super/usuarios','POST',{usuario:d.usuario,nombre:d.nombre,clave:d.clave,superadmin:d.superadmin});
+      if(d.vet) await api(`api/super/usuarios/${id}/veterinarias/${d.vet}`,'PUT',{rol:d.rol,atiende:d.atiende});
+    });
+  document.querySelectorAll('[data-asignar]').forEach(b=>b.onclick=()=>pedir('Dar acceso a '+u(b.dataset.asignar).nombre,[
+    {n:'vet',l:'Veterinaria',tipo:'select',opciones:vetOpts()},{n:'rol',l:'Rol',tipo:'select',opciones:opts(ROLES,'recepcion')},
+    {n:'atiende',l:'Atiende pacientes',tipo:'check'}],'Dar acceso',d=>api(`api/super/usuarios/${b.dataset.asignar}/veterinarias/${d.vet}`,'PUT',{rol:d.rol,atiende:d.atiende})));
+  document.querySelectorAll('[data-sacar]').forEach(b=>b.onclick=()=>{const [uid,vid]=b.dataset.sacar.split(':');
+    pedir(`¿Sacar a ${u(uid).nombre} de ${v(vid).nombre}?`,[],'Sacar',()=>api(`api/super/usuarios/${uid}/veterinarias/${vid}`,'DELETE'))});
+  document.querySelectorAll('[data-editar-usu]').forEach(b=>b.onclick=()=>{const x=u(b.dataset.editarUsu),yo=x.id===resumen.yo;
+    pedir('Editar '+x.nombre,[{n:'nombre',l:'Nombre',valor:x.nombre},{n:'clave',l:'Contraseña nueva (dejala vacía para no cambiarla)',tipo:'password'},
+      ...(yo?[]:[{n:'superadmin',l:'Administrador general (controla todo)',tipo:'check',valor:x.superadmin}])],'Guardar',
+      d=>api('api/super/usuarios/'+x.id,'PATCH',{nombre:d.nombre||null,clave:d.clave||null,...(yo?{}:{superadmin:d.superadmin})}))});
+  document.querySelectorAll('[data-bloq]').forEach(b=>b.onclick=()=>hacer(()=>api('api/super/usuarios/'+b.dataset.bloq,'PATCH',{activo:!u(b.dataset.bloq).activo}),'Listo'));
+}
+
+// ---------- General ----------
+const TABS=()=>[sesion.rol==='admin'&&['mia','Mi veterinaria'],sesion.usuario.superadmin&&['general','Todas las veterinarias']].filter(Boolean);
+async function cargar(){
+  sesion=await api('api/sesion');
+  const tabs=TABS();
+  if(!tabs.length){location.href='./';return}
+  if(!tabs.some(([k])=>k===tab)) tab=tabs[0][0];
+  $('quien').textContent=sesion.usuario.nombre+(sesion.veterinaria?' · '+sesion.veterinaria.nombre:'');
+  $('volver').hidden=!sesion.veterinaria;
+  $('tabs').innerHTML=tabs.map(([k,l])=>`<button class="${k===tab?'on':''}" data-tab="${k}">${l}</button>`).join('');
+  $('tabs').hidden=tabs.length<2;
+  if(tab==='mia'){equipo=await api('api/equipo');$('vista').innerHTML=vistaMia();eventosMia()}
+  else{resumen=await api('api/super/resumen');resumen.yo=resumen.usuarios.find(x=>x.usuario===sesion.usuario.usuario)?.id;$('vista').innerHTML=vistaGeneral();eventosGeneral()}
+}
+$('tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){tab=b.dataset.tab;cargar()}};
+$('salir').onclick=async()=>{await api('api/logout','POST');location.href='login.html'};
+cargar().catch(e=>{if(e.message!=='sin sesión') toast(e.message)});
+</script>
+</body>
+</html>

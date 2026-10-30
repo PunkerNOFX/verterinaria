@@ -51,6 +51,19 @@ Las siguientes veces solo actualiza el programa; los datos no se tocan.
 Queda en `http://IP-DEL-SERVER:8092`. Todas las noches se guarda una copia de la
 base y de los archivos en `/var/backups/veterinaria-pg` (últimos 14 días).
 
+## Panel de administración
+
+`panel.html` (se llega desde "Mi cuenta"):
+
+- **Mi veterinaria** (rol `admin`): datos que salen en recetas y mensajes, y las personas que usan la app: agregar, cambiar rol, "atiende", contraseña, bloquear y quitar. Si una persona trabaja en más de una veterinaria, su nombre, contraseña y bloqueo solo los cambia el administrador general.
+- **Todas las veterinarias** (administrador general): alta, edición y desactivación de veterinarias, todos los usuarios, dar o sacar acceso a cada veterinaria y entrar a cualquiera como administración.
+
+El primer administrador general se crea desde la terminal:
+
+```bash
+sudo veterinaria-admin nuevo-usuario nofx "NOFX" --superadmin
+```
+
 ## Administrar veterinarias y usuarios
 
 ```bash
