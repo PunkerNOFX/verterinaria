@@ -41,8 +41,9 @@ def base(tmp_path_factory):
         for usuario, nombre, vets in [('ana', 'Dra. Ana', [(a, 'admin', True)]),
                                       ('rita', 'Rita', [(a, 'recepcion', False)]),
                                       ('vero', 'Dra. Vero', [(a, 'veterinario', True), (b, 'admin', True)]),
-                                      ('hugo', 'Hugo', [(b, 'admin', False)])]:
-            uid = admin.crear_usuario(c, usuario, nombre, 'clave-segura')
+                                      ('hugo', 'Hugo', [(b, 'admin', False)]),
+                                      ('jefe', 'Jefe', [])]:
+            uid = admin.crear_usuario(c, usuario, nombre, 'clave-segura', superadmin=usuario == 'jefe')
             for vid, rol, atiende in vets:
                 admin.asignar(c, uid, vid, rol, atiende)
     yield {'a': a, 'b': b}
@@ -169,3 +170,55 @@ def test_importar_db_json(base, tmp_path, capsys):
     d = vero.get('/api/datos').json()
     assert {c['nombre'] for c in d['clientes']} == {'Jorge', 'Carla'}
     assert d['turnos'][0]['items'][0]['precio'] == 100
+
+
+def test_panel_de_la_veterinaria(base):
+    ana, rita = entrar('ana'), entrar('rita')
+    assert rita.get('/api/equipo').status_code == 403
+    eq = ana.get('/api/equipo').json()
+    assert {m['usuario'] for m in eq} == {'ana', 'rita', 'vero'}
+    nuevo = {'usuario': 'Lola', 'nombre': 'Lola Paz', 'clave': 'clave-lola', 'rol': 'recepcion'}
+    assert ana.post('/api/equipo', headers=H, json=nuevo).status_code == 200
+    assert ana.post('/api/equipo', headers=H, json=nuevo).status_code == 409
+    assert ana.post('/api/equipo', headers=H, json={**nuevo, 'usuario': 'con espacio'}).status_code == 400
+    lola = next(m for m in ana.get('/api/equipo').json() if m['usuario'] == 'lola')
+    entrar('lola', 'clave-lola')
+    assert ana.patch(f"/api/equipo/{lola['id']}", headers=H, json={'rol': 'veterinario', 'atiende': True}).status_code == 200
+    assert 'Lola Paz' in ana.get('/api/sesion').json()['profesionales']
+    # Vero trabaja en dos veterinarias: su contraseña la cambia solo el general.
+    vero = next(m for m in eq if m['usuario'] == 'vero')
+    assert ana.patch(f"/api/equipo/{vero['id']}", headers=H, json={'clave': 'otra-clave'}).status_code == 403
+    # No se puede dejar la veterinaria sin administración.
+    yo = next(m for m in eq if m['usuario'] == 'ana')
+    assert ana.patch(f"/api/equipo/{yo['id']}", headers=H, json={'rol': 'recepcion'}).status_code == 400
+    assert ana.delete(f"/api/equipo/{yo['id']}", headers=H).status_code == 400
+    # Un usuario de otra veterinaria no se puede tocar desde acá.
+    hugo_id = entrar('jefe').get('/api/super/resumen').json()['usuarios']
+    hugo_id = next(u['id'] for u in hugo_id if u['usuario'] == 'hugo')
+    assert ana.patch(f'/api/equipo/{hugo_id}', headers=H, json={'rol': 'recepcion'}).status_code == 404
+    assert ana.delete(f"/api/equipo/{lola['id']}", headers=H).status_code == 200
+    assert ana.patch('/api/veterinaria', headers=H, json={'telefono': '11 9999-0000'}).status_code == 200
+    assert ana.get('/api/sesion').json()['veterinaria']['telefono'] == '11 9999-0000'
+    assert rita.patch('/api/veterinaria', headers=H, json={'nombre': 'X'}).status_code == 403
+
+
+def test_panel_general(base):
+    assert entrar('ana').get('/api/super/resumen').status_code == 403
+    jefe = entrar('jefe')
+    s = jefe.get('/api/sesion').json()
+    assert s['veterinaria'] is None and len(s['veterinarias']) >= 2
+    r = jefe.post('/api/super/veterinarias', headers=H, json={'nombre': 'Nueva Vet'}).json()
+    uid = jefe.post('/api/super/usuarios', headers=H, json={'usuario': 'dueno', 'nombre': 'Dueño', 'clave': 'clave-dueno'}).json()['id']
+    assert jefe.put(f"/api/super/usuarios/{uid}/veterinarias/{r['id']}", headers=H, json={'rol': 'admin', 'atiende': True}).status_code == 200
+    dueno = entrar('dueno', 'clave-dueno')
+    assert dueno.get('/api/sesion').json()['veterinaria']['nombre'] == 'Nueva Vet'
+    # El general entra a cualquier veterinaria como admin.
+    assert jefe.post('/api/elegir-veterinaria', headers=H, json={'veterinaria_id': r['id']}).status_code == 200
+    assert jefe.get('/api/sesion').json()['rol'] == 'admin'
+    assert jefe.get('/api/datos').status_code == 200
+    # Desactivar la veterinaria corta el acceso de su gente.
+    assert jefe.patch(f"/api/super/veterinarias/{r['id']}", headers=H, json={'activa': False}).status_code == 200
+    assert dueno.get('/api/sesion').status_code == 401
+    assert jefe.patch(f"/api/super/usuarios/{uid}", headers=H, json={'activo': False}).status_code == 200
+    me = next(u['id'] for u in jefe.get('/api/super/resumen').json()['usuarios'] if u['usuario'] == 'jefe')
+    assert jefe.patch(f'/api/super/usuarios/{me}', headers=H, json={'superadmin': False}).status_code == 400

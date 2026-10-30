@@ -108,9 +108,11 @@ function hydrateThumbs(root){
 """
 
 CUENTA = r"""function formCuenta(){
-  const otras=sesion.veterinarias.filter(v=>v.id!==sesion.veterinaria.id);
+  const otras=sesion.usuario.superadmin?[]:sesion.veterinarias.filter(v=>v.id!==sesion.veterinaria.id);
+  const panel=sesion.usuario.superadmin?'Panel general':sesion.rol==='admin'?'Usuarios y datos de la veterinaria':'';
   openModal(`<h2>Mi cuenta</h2><form class="form" novalidate>
     <p class="full">${esc(sesion.usuario.nombre)} · ${esc(ROLES[sesion.rol])} en <b>${esc(CLINICA.nombre)}</b><br><span class="hint">Usuario: ${esc(sesion.usuario.usuario)}</span></p>
+    ${panel?`<div class="full"><a class="btn small" href="panel.html">${panel}</a></div>`:''}
     ${otras.length?`<div class="full">${otras.map(v=>`<button type="button" class="btn small" data-elegir-vet="${v.id}">Pasar a ${esc(v.nombre)}</button>`).join(' ')}</div>`:''}
     <p class="full"><b>Cambiar contraseña</b></p>
     ${field('cu-a','Contraseña actual','<input id="cu-a" type="password" name="actual" autocomplete="current-password">')}

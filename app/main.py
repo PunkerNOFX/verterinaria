@@ -83,13 +83,15 @@ def sesion_actual(request: Request) -> Sesion:
     with tx() as c:
         fila = c.execute("""
             SELECT u.id AS usuario_id, u.usuario, u.nombre, u.superadmin,
-                   s.veterinaria_id, m.rol
+                   s.veterinaria_id,
+                   -- El superadministrador entra a cualquier veterinaria como admin.
+                   COALESCE(m.rol, CASE WHEN u.superadmin AND v.id IS NOT NULL THEN 'admin' END) AS rol
               FROM sesiones s
               JOIN usuarios u ON u.id = s.usuario_id AND u.activo
               LEFT JOIN membresias m ON m.usuario_id = u.id AND m.veterinaria_id = s.veterinaria_id
               LEFT JOIN veterinarias v ON v.id = s.veterinaria_id
              WHERE s.token_hash = %s AND s.expira > now()
-               AND (s.veterinaria_id IS NULL OR v.activa)""",
+               AND (s.veterinaria_id IS NULL OR v.activa OR u.superadmin)""",
             (seguridad.hash_token(token),)).fetchone()
     if not fila:
         raise HTTPException(401, 'La sesión venció, volvé a entrar')
@@ -102,11 +104,13 @@ def con_veterinaria(s: Sesion = Depends(sesion_actual)) -> Sesion:
     return s
 
 
-def veterinarias_de(c, usuario_id):
+def veterinarias_de(c, usuario_id, superadmin=False):
     return c.execute("""
-        SELECT v.id, v.nombre, m.rol FROM membresias m
-          JOIN veterinarias v ON v.id = m.veterinaria_id AND v.activa
-         WHERE m.usuario_id = %s ORDER BY v.nombre""", (usuario_id,)).fetchall()
+        SELECT v.id, v.nombre, COALESCE(m.rol, 'admin') AS rol
+          FROM veterinarias v
+          LEFT JOIN membresias m ON m.veterinaria_id = v.id AND m.usuario_id = %s
+         WHERE v.activa AND (m.usuario_id IS NOT NULL OR %s)
+         ORDER BY v.nombre""", (usuario_id, superadmin)).fetchall()
 
 
 # ---------- Login ----------
@@ -123,7 +127,7 @@ def login(datos: Login, request: Request, response: Response):
     if freno_usuario.bloqueado(usuario) or freno_ip.bloqueado(ip):
         raise HTTPException(429, 'Demasiados intentos. Esperá 10 minutos y probá de nuevo.')
     with tx() as c:
-        u = c.execute('SELECT id, clave_hash FROM usuarios WHERE usuario = %s AND activo',
+        u = c.execute('SELECT id, clave_hash, superadmin FROM usuarios WHERE usuario = %s AND activo',
                       (usuario,)).fetchone()
         if not seguridad.verificar(u and u['clave_hash'], datos.clave):
             freno_usuario.fallo(usuario)
@@ -137,7 +141,7 @@ def login(datos: Login, request: Request, response: Response):
         token, token_hash = seguridad.nuevo_token()
         c.execute('DELETE FROM sesiones WHERE expira < now()')
         c.execute('INSERT INTO sesiones (token_hash, usuario_id, veterinaria_id, expira) VALUES (%s, %s, %s, %s)',
-                  (token_hash, u['id'], vets[0]['id'] if len(vets) == 1 else None,
+                  (token_hash, u['id'], vets[0]['id'] if len(vets) == 1 and not u['superadmin'] else None,
                    datetime.now(timezone.utc) + timedelta(seconds=seguridad.DURACION_SESION)))
     response.set_cookie(COOKIE, token, max_age=seguridad.DURACION_SESION, httponly=True,
                         samesite='lax', secure=COOKIE_SEGURA, path='/')
@@ -157,7 +161,7 @@ def logout(request: Request, response: Response):
 @app.get('/api/sesion')
 def sesion(s: Sesion = Depends(sesion_actual)):
     with tx() as c:
-        vets = veterinarias_de(c, s.usuario_id)
+        vets = veterinarias_de(c, s.usuario_id, s.superadmin)
         vet = profesionales = None
         if s.veterinaria_id is not None and s.rol:
             vet = c.execute('SELECT id, nombre, direccion, telefono, alias_pago FROM veterinarias WHERE id = %s',
@@ -183,7 +187,7 @@ class Elegir(BaseModel):
 @app.post('/api/elegir-veterinaria')
 def elegir(datos: Elegir, request: Request, s: Sesion = Depends(sesion_actual)):
     with tx() as c:
-        if not any(v['id'] == datos.veterinaria_id for v in veterinarias_de(c, s.usuario_id)):
+        if not any(v['id'] == datos.veterinaria_id for v in veterinarias_de(c, s.usuario_id, s.superadmin)):
             raise HTTPException(403, 'No tenés acceso a esa veterinaria')
         c.execute('UPDATE sesiones SET veterinaria_id = %s WHERE token_hash = %s',
                   (datos.veterinaria_id, seguridad.hash_token(request.cookies[COOKIE])))
@@ -295,6 +299,254 @@ def bajar(archivo_id: str, s: Sesion = Depends(con_veterinaria)):
     return FileResponse(ruta, media_type=a['mime'], filename=a['nombre'], content_disposition_type='inline',
                         headers={'Cache-Control': 'private, max-age=86400',
                                  'X-Content-Type-Options': 'nosniff'})
+
+
+# ---------- Panel: usuarios y datos de la veterinaria (rol admin) ----------
+
+USUARIO_OK = re.compile(r'^[a-z0-9._-]{3,40}$')
+
+
+def solo_admin(s: Sesion = Depends(con_veterinaria)) -> Sesion:
+    if s.rol != 'admin':
+        raise HTTPException(403, 'Solo la administración de la veterinaria puede hacer esto')
+    return s
+
+
+def solo_superadmin(s: Sesion = Depends(sesion_actual)) -> Sesion:
+    if not s.superadmin:
+        raise HTTPException(403, 'Solo el administrador general puede hacer esto')
+    return s
+
+
+def validar_usuario(usuario: str) -> str:
+    usuario = usuario.strip().lower()
+    if not USUARIO_OK.match(usuario):
+        raise HTTPException(400, 'El usuario tiene que tener entre 3 y 40 letras o números, sin espacios')
+    return usuario
+
+
+def crear_usuario(c, usuario, nombre, clave, superadmin=False):
+    usuario = validar_usuario(usuario)
+    if c.execute('SELECT 1 FROM usuarios WHERE usuario = %s', (usuario,)).fetchone():
+        raise HTTPException(409, f'Ya existe el usuario "{usuario}". Elegí otro nombre de usuario.')
+    return c.execute('INSERT INTO usuarios (usuario, nombre, clave_hash, superadmin) VALUES (%s, %s, %s, %s) RETURNING id',
+                     (usuario, nombre.strip(), seguridad.hashear(clave), superadmin)).fetchone()['id']
+
+
+def quedan_admins(c, veterinaria_id, sin_usuario):
+    return c.execute("""SELECT 1 FROM membresias m JOIN usuarios u ON u.id = m.usuario_id AND u.activo
+                         WHERE m.veterinaria_id = %s AND m.rol = 'admin' AND m.usuario_id <> %s""",
+                     (veterinaria_id, sin_usuario)).fetchone() is not None
+
+
+class NuevoMiembro(BaseModel):
+    usuario: str = Field(max_length=40)
+    nombre: str = Field(min_length=1, max_length=100)
+    clave: str = Field(min_length=8, max_length=200)
+    rol: str = Field(pattern='^(admin|veterinario|recepcion)$')
+    atiende: bool = False
+
+
+class CambioMiembro(BaseModel):
+    nombre: str | None = Field(None, min_length=1, max_length=100)
+    clave: str | None = Field(None, min_length=8, max_length=200)
+    rol: str | None = Field(None, pattern='^(admin|veterinario|recepcion)$')
+    atiende: bool | None = None
+    activo: bool | None = None
+
+
+@app.get('/api/equipo')
+def equipo(s: Sesion = Depends(solo_admin)):
+    with tx() as c:
+        return c.execute("""
+            SELECT u.id, u.usuario, u.nombre, u.activo, m.rol, m.atiende,
+                   (SELECT count(*) FROM membresias o WHERE o.usuario_id = u.id) > 1 AS compartido
+              FROM membresias m JOIN usuarios u ON u.id = m.usuario_id
+             WHERE m.veterinaria_id = %s ORDER BY u.activo DESC, u.nombre""", (s.veterinaria_id,)).fetchall()
+
+
+@app.post('/api/equipo')
+def sumar_miembro(d: NuevoMiembro, s: Sesion = Depends(solo_admin)):
+    with tx() as c:
+        uid = crear_usuario(c, d.usuario, d.nombre, d.clave)
+        c.execute('INSERT INTO membresias (usuario_id, veterinaria_id, rol, atiende) VALUES (%s, %s, %s, %s)',
+                  (uid, s.veterinaria_id, d.rol, d.atiende))
+    return {'ok': True}
+
+
+@app.patch('/api/equipo/{usuario_id}')
+def cambiar_miembro(usuario_id: int, d: CambioMiembro, s: Sesion = Depends(solo_admin)):
+    with tx() as c:
+        m = c.execute("""SELECT m.rol, (SELECT count(*) FROM membresias o WHERE o.usuario_id = m.usuario_id) > 1 AS compartido
+                           FROM membresias m WHERE m.usuario_id = %s AND m.veterinaria_id = %s""",
+                      (usuario_id, s.veterinaria_id)).fetchone()
+        if not m:
+            raise HTTPException(404, 'Ese usuario no es de esta veterinaria')
+        # Nombre, contraseña y bloqueo valen para todas sus veterinarias: si
+        # trabaja también en otra, solo lo puede cambiar el administrador general.
+        if (d.nombre or d.clave or d.activo is not None) and m['compartido'] and not s.superadmin:
+            raise HTTPException(403, 'Este usuario trabaja también en otra veterinaria. Pedile el cambio al administrador general.')
+        deja_admin = (d.rol and d.rol != 'admin') or d.activo is False
+        if m['rol'] == 'admin' and deja_admin and not quedan_admins(c, s.veterinaria_id, usuario_id):
+            raise HTTPException(400, 'Tiene que quedar al menos una persona con rol de administración')
+        if d.rol is not None or d.atiende is not None:
+            c.execute('UPDATE membresias SET rol = COALESCE(%s, rol), atiende = COALESCE(%s, atiende) WHERE usuario_id = %s AND veterinaria_id = %s',
+                      (d.rol, d.atiende, usuario_id, s.veterinaria_id))
+        if d.nombre:
+            c.execute('UPDATE usuarios SET nombre = %s WHERE id = %s', (d.nombre.strip(), usuario_id))
+        if d.clave:
+            c.execute('UPDATE usuarios SET clave_hash = %s WHERE id = %s', (seguridad.hashear(d.clave), usuario_id))
+        if d.activo is not None:
+            c.execute('UPDATE usuarios SET activo = %s WHERE id = %s', (d.activo, usuario_id))
+        if d.clave or d.activo is False:
+            c.execute('DELETE FROM sesiones WHERE usuario_id = %s AND usuario_id <> %s', (usuario_id, s.usuario_id))
+    return {'ok': True}
+
+
+@app.delete('/api/equipo/{usuario_id}')
+def quitar_miembro(usuario_id: int, s: Sesion = Depends(solo_admin)):
+    with tx() as c:
+        m = c.execute('SELECT rol FROM membresias WHERE usuario_id = %s AND veterinaria_id = %s',
+                      (usuario_id, s.veterinaria_id)).fetchone()
+        if not m:
+            raise HTTPException(404, 'Ese usuario no es de esta veterinaria')
+        if m['rol'] == 'admin' and not quedan_admins(c, s.veterinaria_id, usuario_id):
+            raise HTTPException(400, 'Tiene que quedar al menos una persona con rol de administración')
+        c.execute('DELETE FROM membresias WHERE usuario_id = %s AND veterinaria_id = %s', (usuario_id, s.veterinaria_id))
+        c.execute('DELETE FROM sesiones WHERE usuario_id = %s AND veterinaria_id = %s', (usuario_id, s.veterinaria_id))
+    return {'ok': True}
+
+
+class DatosVeterinaria(BaseModel):
+    nombre: str | None = Field(None, min_length=1, max_length=120)
+    direccion: str | None = Field(None, max_length=200)
+    telefono: str | None = Field(None, max_length=60)
+    alias_pago: str | None = Field(None, max_length=100)
+
+
+def actualizar_veterinaria(c, veterinaria_id, campos: dict):
+    campos = {k: (v.strip() if isinstance(v, str) else v) for k, v in campos.items() if v is not None}
+    if campos:
+        sets = ', '.join(f'{k} = %s' for k in campos)  # claves fijas del modelo
+        c.execute(f'UPDATE veterinarias SET {sets} WHERE id = %s', (*campos.values(), veterinaria_id))
+
+
+@app.patch('/api/veterinaria')
+def editar_mi_veterinaria(d: DatosVeterinaria, s: Sesion = Depends(solo_admin)):
+    with tx() as c:
+        actualizar_veterinaria(c, s.veterinaria_id, d.model_dump())
+    return {'ok': True}
+
+
+# ---------- Panel general (superadministrador) ----------
+
+class NuevaVeterinaria(BaseModel):
+    nombre: str = Field(min_length=1, max_length=120)
+    direccion: str = Field('', max_length=200)
+    telefono: str = Field('', max_length=60)
+    alias_pago: str = Field('', max_length=100)
+
+
+class CambioVeterinaria(DatosVeterinaria):
+    activa: bool | None = None
+
+
+class NuevoUsuario(BaseModel):
+    usuario: str = Field(max_length=40)
+    nombre: str = Field(min_length=1, max_length=100)
+    clave: str = Field(min_length=8, max_length=200)
+    superadmin: bool = False
+
+
+class CambioUsuario(BaseModel):
+    nombre: str | None = Field(None, min_length=1, max_length=100)
+    clave: str | None = Field(None, min_length=8, max_length=200)
+    activo: bool | None = None
+    superadmin: bool | None = None
+
+
+class Membresia(BaseModel):
+    rol: str = Field(pattern='^(admin|veterinario|recepcion)$')
+    atiende: bool = False
+
+
+@app.get('/api/super/resumen')
+def resumen(s: Sesion = Depends(solo_superadmin)):
+    with tx() as c:
+        vets = c.execute("""
+            SELECT v.id, v.nombre, v.direccion, v.telefono, v.alias_pago, v.activa, v.creada,
+                   (SELECT count(*) FROM membresias m WHERE m.veterinaria_id = v.id) AS usuarios
+              FROM veterinarias v ORDER BY v.nombre""").fetchall()
+        usuarios = c.execute("""
+            SELECT u.id, u.usuario, u.nombre, u.activo, u.superadmin,
+                   COALESCE(json_agg(json_build_object('veterinaria_id', m.veterinaria_id, 'rol', m.rol, 'atiende', m.atiende))
+                            FILTER (WHERE m.usuario_id IS NOT NULL), '[]') AS membresias
+              FROM usuarios u LEFT JOIN membresias m ON m.usuario_id = u.id
+             GROUP BY u.id ORDER BY u.nombre""").fetchall()
+    return {'veterinarias': vets, 'usuarios': usuarios}
+
+
+@app.post('/api/super/veterinarias')
+def super_nueva_veterinaria(d: NuevaVeterinaria, s: Sesion = Depends(solo_superadmin)):
+    with tx() as c:
+        vid = c.execute('INSERT INTO veterinarias (nombre, direccion, telefono, alias_pago) VALUES (%s, %s, %s, %s) RETURNING id',
+                        (d.nombre.strip(), d.direccion.strip(), d.telefono.strip(), d.alias_pago.strip())).fetchone()['id']
+    return {'id': vid}
+
+
+@app.patch('/api/super/veterinarias/{veterinaria_id}')
+def super_editar_veterinaria(veterinaria_id: int, d: CambioVeterinaria, s: Sesion = Depends(solo_superadmin)):
+    with tx() as c:
+        if not c.execute('SELECT 1 FROM veterinarias WHERE id = %s', (veterinaria_id,)).fetchone():
+            raise HTTPException(404, 'No existe esa veterinaria')
+        actualizar_veterinaria(c, veterinaria_id, d.model_dump())
+    return {'ok': True}
+
+
+@app.post('/api/super/usuarios')
+def super_nuevo_usuario(d: NuevoUsuario, s: Sesion = Depends(solo_superadmin)):
+    with tx() as c:
+        return {'id': crear_usuario(c, d.usuario, d.nombre, d.clave, d.superadmin)}
+
+
+@app.patch('/api/super/usuarios/{usuario_id}')
+def super_editar_usuario(usuario_id: int, d: CambioUsuario, s: Sesion = Depends(solo_superadmin)):
+    if usuario_id == s.usuario_id and (d.activo is False or d.superadmin is False):
+        raise HTTPException(400, 'No podés bloquearte ni quitarte el acceso general a vos mismo')
+    with tx() as c:
+        if not c.execute('SELECT 1 FROM usuarios WHERE id = %s', (usuario_id,)).fetchone():
+            raise HTTPException(404, 'No existe ese usuario')
+        if d.nombre:
+            c.execute('UPDATE usuarios SET nombre = %s WHERE id = %s', (d.nombre.strip(), usuario_id))
+        if d.clave:
+            c.execute('UPDATE usuarios SET clave_hash = %s WHERE id = %s', (seguridad.hashear(d.clave), usuario_id))
+        if d.activo is not None:
+            c.execute('UPDATE usuarios SET activo = %s WHERE id = %s', (d.activo, usuario_id))
+        if d.superadmin is not None:
+            c.execute('UPDATE usuarios SET superadmin = %s WHERE id = %s', (d.superadmin, usuario_id))
+        if d.clave or d.activo is False or d.superadmin is False:
+            c.execute('DELETE FROM sesiones WHERE usuario_id = %s', (usuario_id,))
+    return {'ok': True}
+
+
+@app.put('/api/super/usuarios/{usuario_id}/veterinarias/{veterinaria_id}')
+def super_asignar(usuario_id: int, veterinaria_id: int, d: Membresia, s: Sesion = Depends(solo_superadmin)):
+    with tx() as c:
+        if not c.execute('SELECT 1 FROM usuarios WHERE id = %s', (usuario_id,)).fetchone() or \
+           not c.execute('SELECT 1 FROM veterinarias WHERE id = %s', (veterinaria_id,)).fetchone():
+            raise HTTPException(404, 'No existe ese usuario o esa veterinaria')
+        c.execute("""INSERT INTO membresias (usuario_id, veterinaria_id, rol, atiende) VALUES (%s, %s, %s, %s)
+                     ON CONFLICT (usuario_id, veterinaria_id) DO UPDATE SET rol = EXCLUDED.rol, atiende = EXCLUDED.atiende""",
+                  (usuario_id, veterinaria_id, d.rol, d.atiende))
+    return {'ok': True}
+
+
+@app.delete('/api/super/usuarios/{usuario_id}/veterinarias/{veterinaria_id}')
+def super_quitar(usuario_id: int, veterinaria_id: int, s: Sesion = Depends(solo_superadmin)):
+    with tx() as c:
+        c.execute('DELETE FROM membresias WHERE usuario_id = %s AND veterinaria_id = %s', (usuario_id, veterinaria_id))
+        c.execute('DELETE FROM sesiones WHERE usuario_id = %s AND veterinaria_id = %s', (usuario_id, veterinaria_id))
+    return {'ok': True}
 
 
 @app.get('/api/salud')

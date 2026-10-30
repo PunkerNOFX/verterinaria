@@ -66,6 +66,7 @@ async function seguir(){
   if(!r.ok) return false;
   const s=await r.json();
   if(s.veterinaria){location.replace('./');return true}
+  if(s.usuario.superadmin){location.replace('panel.html');return true}
   $('entrar').hidden=true;$('elegir').hidden=false;
   if(!s.veterinarias.length){$('err2').textContent='Tu usuario todavía no tiene ninguna veterinaria asignada. Pedile acceso al administrador.';return true}
   $('vets').replaceChildren(...s.veterinarias.map(v=>{
