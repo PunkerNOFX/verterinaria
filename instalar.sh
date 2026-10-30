@@ -37,6 +37,7 @@ mkdir -p "$APP" "$WEB" "$DATOS/archivos" "$RESPALDOS"
 rm -rf "$APP/app"
 cp -r app requirements.txt "$APP/"
 cp web/* "$WEB/"
+cd /   # así postgres no se queja de no poder entrar a la carpeta actual
 chown -R veterinaria:veterinaria "$DATOS"
 chmod 750 "$DATOS"
 chmod 700 "$RESPALDOS"
