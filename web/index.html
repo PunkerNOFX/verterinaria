@@ -434,6 +434,9 @@ function renderNav(){
 
 function render(){
   renderNav();
+  // En el celular los botones "+ Nuevo..." del encabezado se ocultan y el
+  // botón flotante hace de acción principal de cada sección.
+  document.getElementById('fab').textContent=fabAccion()[0];
   const v=document.getElementById('view');
   const d=state.detail;
   v.innerHTML=`<div class="cuentabar"><b>${esc(CLINICA.nombre)}</b><button class="btn small" data-cuenta>Mi cuenta</button></div>`+
@@ -957,6 +960,23 @@ function formDoc(tipo,mid,visita){
   });
 }
 
+// Encabezado común de los PDF: datos de la veterinaria, título y ficha del paciente.
+// Devuelve la altura donde empieza el contenido.
+function pdfEncabezado(pdf,titulo,fecha,m,c,urgente){
+  const L=20,R=190;let y=20;
+  pdf.setFont('helvetica','bold');pdf.setFontSize(18);pdf.setTextColor(31,107,79);pdf.text(CLINICA.nombre,L,y);
+  pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.setTextColor(95,107,99);pdf.text(`${CLINICA.dir} · Tel. ${CLINICA.tel}`,L,y+6);
+  pdf.setFontSize(10);pdf.text(fmtCorto(fecha),R,y,{align:'right'});
+  y+=12;pdf.setDrawColor(31,107,79);pdf.setLineWidth(.6);pdf.line(L,y,R,y);pdf.setLineWidth(.2);
+  y+=9;pdf.setFont('helvetica','bold');pdf.setFontSize(14);pdf.setTextColor(29,36,32);pdf.text(titulo.toUpperCase(),L,y);
+  if(urgente){pdf.setTextColor(163,53,43);pdf.text('URGENTE',R,y,{align:'right'});pdf.setTextColor(29,36,32)}
+  // Paciente
+  y+=7;pdf.setFillColor(238,241,234);pdf.roundedRect(L,y,R-L,22,2,2,'F');
+  const kv=(k,v,x,yy)=>{pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(95,107,99);pdf.text(k.toUpperCase(),x,yy);pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.setTextColor(29,36,32);pdf.text(String(v||'–'),x,yy+4.5)};
+  kv('Paciente',m.nombre,L+4,y+6);kv('Especie / raza',`${m.especie}${m.raza?' · '+m.raza:''}`,L+44,y+6);kv('Edad',edad(m.nacimiento),L+104,y+6);kv('Peso',m.peso?m.peso+' kg':'',L+140,y+6);
+  kv('Propietario',fullName(c),L+4,y+16);kv('Teléfono',c?.telefono,L+104,y+16);
+  return y+32;
+}
 function pdfDoc(d){
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF({unit:'mm',format:'a4'});
@@ -965,19 +985,7 @@ function pdfDoc(d){
   const wrap=(t,w)=>pdf.splitTextToSize(String(t),w);
   const line=()=>{pdf.setDrawColor(200);pdf.line(L,y,R,y)};
   const ensure=h=>{if(y+h>262){pdf.addPage();y=20}};
-  // Encabezado
-  pdf.setFont('helvetica','bold');pdf.setFontSize(18);pdf.setTextColor(31,107,79);pdf.text(CLINICA.nombre,L,y);
-  pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.setTextColor(95,107,99);pdf.text(`${CLINICA.dir} · Tel. ${CLINICA.tel}`,L,y+6);
-  pdf.setFontSize(10);pdf.text(fmtCorto(d.fecha),R,y,{align:'right'});
-  y+=12;pdf.setDrawColor(31,107,79);pdf.setLineWidth(.6);pdf.line(L,y,R,y);pdf.setLineWidth(.2);
-  y+=9;pdf.setFont('helvetica','bold');pdf.setFontSize(14);pdf.setTextColor(29,36,32);pdf.text(DOCS[d.tipo].toUpperCase(),L,y);
-  if(d.urgente){pdf.setTextColor(163,53,43);pdf.text('URGENTE',R,y,{align:'right'});pdf.setTextColor(29,36,32)}
-  // Paciente
-  y+=7;pdf.setFillColor(238,241,234);pdf.roundedRect(L,y,R-L,22,2,2,'F');
-  const kv=(k,v,x,yy)=>{pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(95,107,99);pdf.text(k.toUpperCase(),x,yy);pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.setTextColor(29,36,32);pdf.text(String(v||'–'),x,yy+4.5)};
-  kv('Paciente',m.nombre,L+4,y+6);kv('Especie / raza',`${m.especie}${m.raza?' · '+m.raza:''}`,L+44,y+6);kv('Edad',edad(m.nacimiento),L+104,y+6);kv('Peso',m.peso?m.peso+' kg':'',L+140,y+6);
-  kv('Propietario',fullName(c),L+4,y+16);kv('Teléfono',c?.telefono,L+104,y+16);
-  y+=32;
+  y=pdfEncabezado(pdf,DOCS[d.tipo],d.fecha,m,c,d.urgente);
   const h2=t=>{ensure(14);pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(31,107,79);pdf.text(t,L,y);y+=6;pdf.setTextColor(29,36,32)};
   const para=t=>{pdf.setFont('helvetica','normal');pdf.setFontSize(10);for(const ln of wrap(t,R-L)){ensure(6);pdf.text(ln,L,y);y+=5}y+=2};
   if(d.tipo==='receta'){
@@ -1036,11 +1044,12 @@ function pdfDoc(d){
 }
 async function descargarDoc(d){
   if(!window.jspdf) return 'No se pudo cargar el generador de PDF. Revisá la conexión y probá de nuevo.';
+  return descargarPdf(pdfDoc(d),docFilename(d));
+}
+async function descargarPdf(pdf,name){
   const dl=window.claude?await window.claude.use?.('downloads'):null;
   if(!dl&&window.claude) return 'Este navegador no permite descargar archivos desde el prototipo. Abrilo en claude.ai para descargar el PDF.';
-  const m=mascota(d.mascota);
-  const name=`${DOCS[d.tipo]} - ${m.nombre} - ${fmtCorto(d.fecha).replace(/\//g,'-')}.pdf`;
-  const blob=pdfDoc(d).output('blob');
+  const blob=pdf.output('blob');
   if(!dl){ // navegador común (por ejemplo, el server propio): descarga directa
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),10000);return '';
@@ -1219,6 +1228,49 @@ function textoHistoria(m,cuales,conEstudios){
   return t.trim();
 }
 function waNumber(tel){let d=String(tel||'').replace(/\D/g,'');if(!d) return '';if(d.startsWith('0')) d=d.slice(1);return d.startsWith('54')?d:'549'+d}
+function pdfHistoria(m,cuales,conEstudios){
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({unit:'mm',format:'a4'});
+  const c=cliente(m.cliente),L=20,R=190;
+  const vs=visitasDe(m.id),sel=cuales==='ultima'?vs.slice(0,1):vs;
+  let y=pdfEncabezado(pdf,'Historia clínica',TODAY,m,c);
+  const ensure=h=>{if(y+h>278){pdf.addPage();y=20}};
+  const para=(rotulo,t)=>{
+    const lns=pdf.splitTextToSize(String(t),R-L-4);
+    ensure(10);pdf.setFont('helvetica','bold');pdf.setFontSize(8);pdf.setTextColor(95,107,99);pdf.text(rotulo.toUpperCase(),L+2,y);y+=4.5;
+    pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(29,36,32);
+    for(const ln of lns){ensure(5);pdf.text(ln,L+2,y);y+=5}
+    y+=2;
+  };
+  if(!sel.length){pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.text('Todavía no hay consultas registradas.',L,y);y+=8}
+  for(const v of sel){
+    ensure(18);
+    pdf.setFillColor(31,107,79);pdf.rect(L,y-4,1.2,6,'F');
+    pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(29,36,32);pdf.text(`${fmtCorto(v.fecha)} · ${v.motivo||'Consulta'}`,L+4,y);
+    pdf.setFont('helvetica','normal');pdf.setFontSize(9);pdf.setTextColor(95,107,99);pdf.text(v.prof||'',R,y,{align:'right'});
+    y+=6;
+    const vit=[v.temp&&`Temperatura: ${v.temp} °C`,v.peso&&`Peso: ${v.peso} kg`].filter(Boolean).join('   ·   ');
+    if(vit){pdf.setFontSize(10);pdf.setTextColor(29,36,32);pdf.text(vit,L+2,y);y+=6}
+    if(v.obs) para('Observaciones',v.obs);
+    if(v.trat) para('Tratamiento',v.trat);
+    y+=2;pdf.setDrawColor(220);pdf.line(L,y,R,y);y+=7;
+  }
+  const es=estudiosDe(m.id);
+  if(conEstudios&&es.length){
+    ensure(14);pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(31,107,79);pdf.text('Estudios',L,y);y+=6;
+    for(const e of es){
+      const lns=pdf.splitTextToSize(`${fmtCorto(e.fecha)} · ${e.tipo}: ${e.titulo}${e.nota?' ('+e.nota+')':''}`,R-L-4);
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(29,36,32);
+      for(const ln of lns){ensure(5);pdf.text(ln,L+2,y);y+=5}
+      y+=1;
+    }
+  }
+  const n=pdf.getNumberOfPages();
+  for(let i=1;i<=n;i++){pdf.setPage(i);pdf.setFont('helvetica','normal');pdf.setFontSize(7);pdf.setTextColor(150);
+    pdf.text('Documento generado por '+CLINICA.nombre+'.',L,290);pdf.text(`Página ${i} de ${n}`,R,290,{align:'right'})}
+  return pdf;
+}
+const historiaFilename=m=>`Historia clínica - ${m.nombre} - ${fmtCorto(TODAY).replace(/\//g,'-')}.pdf`;
 function formEnviar(mid){
   const m=mascota(mid),c=cliente(m.cliente);
   openModal(`<h2>Enviar historia clínica</h2><form class="form" novalidate>
@@ -1226,9 +1278,9 @@ function formEnviar(mid){
     ${field('s-c','Qué enviar',`<select id="s-c" name="cuales"><option value="todas">Todas las visitas</option><option value="ultima">Solo la última visita</option></select>`)}
     <label class="check" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="s-e" name="estudios" checked> Incluir lista de estudios</label>
     ${field('s-p','Vista previa',`<textarea id="s-p" name="texto" rows="10" readonly></textarea>`,true)}
-    <p class="hint full">En la versión real se envía como PDF con el logo de la veterinaria, directo desde la app.</p>
+    <p class="hint full">"Enviar PDF" abre el menú de compartir del celular para mandarlo por WhatsApp. En la compu se descarga y lo adjuntás en el chat.</p>
     <div class="err full" role="status"></div>
-    <div class="mact full" style="flex-wrap:wrap"><button type="button" class="btn" data-close>Cerrar</button><button type="button" class="btn" data-copiar>Copiar texto</button><a class="btn primary" id="s-wa" target="_blank" rel="noopener">Abrir WhatsApp</a></div></form>`,
+    <div class="mact full" style="flex-wrap:wrap"><button type="button" class="btn" data-close>Cerrar</button><button type="button" class="btn" data-copiar>Copiar texto</button><a class="btn" id="s-wa" target="_blank" rel="noopener">WhatsApp solo texto</a><button type="button" class="btn" data-pdf-bajar>Descargar PDF</button><button type="button" class="btn primary" data-pdf-enviar>Enviar PDF</button></div></form>`,
   ()=>'',f=>{
     const upd=()=>{
       const t=textoHistoria(m,f.cuales.value,f.estudios.checked);
@@ -1241,6 +1293,23 @@ function formEnviar(mid){
       const msg=f.querySelector('.err');
       try{await navigator.clipboard.writeText(f.texto.value);msg.textContent='Texto copiado. Pegalo en WhatsApp o en un email.'}
       catch(e){f.texto.focus();f.texto.select();msg.textContent='Seleccioné el texto: copialo con Ctrl+C o mantené apretado en el celular.'}
+    });
+    const msg=f.querySelector('.err');
+    const armar=()=>{if(!window.jspdf){msg.textContent='No se pudo cargar el generador de PDF. Revisá la conexión y probá de nuevo.';return null}return pdfHistoria(m,f.cuales.value,f.estudios.checked)};
+    f.querySelector('[data-pdf-bajar]').addEventListener('click',async()=>{
+      const pdf=armar();if(!pdf) return;
+      msg.textContent=await descargarPdf(pdf,historiaFilename(m))||'PDF descargado.';
+    });
+    f.querySelector('[data-pdf-enviar]').addEventListener('click',async()=>{
+      const pdf=armar();if(!pdf) return;
+      const file=new File([pdf.output('blob')],historiaFilename(m),{type:'application/pdf'});
+      const data={text:`Hola ${c.nombre}! Te enviamos la historia clínica de ${m.nombre}.\n${CLINICA.nombre}`,files:[file]};
+      if(navigator.canShare&&navigator.canShare(data)){
+        try{await navigator.share(data);closeModal();toast(`Compartido con ${fullName(c)}`);return}
+        catch(e){if(e.name==='AbortError'){msg.textContent='No se envió: cerraste el menú de compartir.';return}}
+      }
+      const err=await descargarPdf(pdf,historiaFilename(m));
+      msg.textContent=err||'Este navegador no deja compartir archivos: el PDF se descargó. Abrí WhatsApp y adjuntalo con el clip.';
     });
   });
 }
@@ -1414,7 +1483,14 @@ document.addEventListener('change',e=>{
   t.estado=e.target.value;save();render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='q'){state.q=e.target.value;render()}});
-document.getElementById('fab').addEventListener('click',()=>formTurno({mascota:state.detail?.type==='mascota'?state.detail.id:undefined}));
+function fabAccion(){
+  const d=state.detail;
+  if(!d&&state.section==='clientes') return ['+ Cliente',()=>formCliente()];
+  if(!d&&state.section==='mascotas') return ['+ Mascota',()=>formMascota(null,'')];
+  if(d?.type==='cliente') return ['+ Mascota',()=>formMascota(null,d.id)];
+  return ['+ Turno',()=>formTurno({mascota:d?.type==='mascota'?d.id:undefined})];
+}
+document.getElementById('fab').addEventListener('click',()=>fabAccion()[1]());
 document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay') closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal()});
 function formCuenta(){
