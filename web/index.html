@@ -434,6 +434,9 @@ function renderNav(){
 
 function render(){
   renderNav();
+  // En el celular los botones "+ Nuevo..." del encabezado se ocultan y el
+  // botón flotante hace de acción principal de cada sección.
+  document.getElementById('fab').textContent=fabAccion()[0];
   const v=document.getElementById('view');
   const d=state.detail;
   v.innerHTML=`<div class="cuentabar"><b>${esc(CLINICA.nombre)}</b><button class="btn small" data-cuenta>Mi cuenta</button></div>`+
@@ -1414,7 +1417,14 @@ document.addEventListener('change',e=>{
   t.estado=e.target.value;save();render();
 });
 document.addEventListener('input',e=>{if(e.target.id==='q'){state.q=e.target.value;render()}});
-document.getElementById('fab').addEventListener('click',()=>formTurno({mascota:state.detail?.type==='mascota'?state.detail.id:undefined}));
+function fabAccion(){
+  const d=state.detail;
+  if(!d&&state.section==='clientes') return ['+ Cliente',()=>formCliente()];
+  if(!d&&state.section==='mascotas') return ['+ Mascota',()=>formMascota(null,'')];
+  if(d?.type==='cliente') return ['+ Mascota',()=>formMascota(null,d.id)];
+  return ['+ Turno',()=>formTurno({mascota:d?.type==='mascota'?d.id:undefined})];
+}
+document.getElementById('fab').addEventListener('click',()=>fabAccion()[1]());
 document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay') closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal()});
 function formCuenta(){
